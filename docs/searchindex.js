@@ -1,0 +1,1 @@
+Search.setIndex({docnames:["index"],envversion:52,filenames:["index.rst"],objects:{},objnames:{},objtypes:{},terms:{},titles:["Welcome to Learn-Computer-and-Math-again's documentation!"],titleterms:{again:0,and:0,comput:0,document:0,indice:0,learn:0,math:0,tabl:0,to:0,welcom:0}})
