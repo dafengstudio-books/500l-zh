@@ -1,0 +1,1516 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>500 Lines or Less | Making Your Own Image Filters &#8212; Learn-Computer-and-Math-again 0.0.1 文档</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="索引" href="../genindex.html" />
+    <link rel="search" title="搜索" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lines-or-less-making-your-own-image-filters">
+<h1>500 Lines or Less | Making Your Own Image Filters<a class="headerlink" href="#lines-or-less-making-your-own-image-filters" title="永久链接至标题">¶</a></h1>
+<div class="container"><div class="row"><div class="hero-unit"><p><a href="#id1"><span class="problematic" id="id2">``</span></a>_
+.. rubric:: Making Your Own Image Filters</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">name:</th><td class="field-body">making-your-own-image-filters</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p class="author rubric" id="cate-huston">Cate Huston</p>
+</div></div><div class="row"><div id="content" class="span10 offset1"><p><em>Cate left the tech industry and spent a year finding her way back
+whilst building her passion project Show &amp; Hide. She is Director of
+Mobile Engineering at Ride, speaks internationally on mobile development
+and engineering culture, co-curates Technically Speaking and is an
+advisor at Glowforge. Cate doesn’t exactly live in Colombia but she
+spends a lot of time there, and has lived and worked in the UK,
+Australia, Canada, China the United States, previously as an engineer at
+Google, an Extreme Blue intern at IBM, and a ski instructor. Cate blogs
+at `Accidentally in Code`_ and is `&#64;catehstn`_ on Twitter.</em></p>
+<p class="rubric" id="a-brilliant-idea-that-wasnt-all-that-brilliant">A Brilliant Idea (That Wasn’t All That Brilliant)</p>
+<p>When I was traveling in China I often saw series of four paintings
+showing the same place in different seasons. Color—the cool whites of
+winter, pale hues of spring, lush greens of summer, and reds and yellows
+of fall—is what visually differentiates the seasons. Around 2011, I had
+what I thought was a brilliant idea: I wanted to be able to visualize a
+photo series as a series of colors. I thought it would show travel, and
+progression through the seasons.</p>
+<p>But I didn’t know how to calculate the dominant color from an image. I
+thought about scaling the image down to a 1x1 square and seeing what was
+left, but that seemed like cheating. I knew how I wanted to display the
+images, though: in a layout called the <a class="reference external" href="http://www.catehuston.com/applets/Sunflower/index.html">Sunflower layout</a>. It’s the
+most efficient way to lay out circles.</p>
+<p>I left this project for years, distracted by work, life, travel, talks.
+Eventually I returned to it, figured out how to calculate the dominant
+color, and <a class="reference external" href="http://www.catehuston.com/blog/2013/09/02/visualising-a-photo-series/">finished my visualization</a>. That is when I discovered that
+this idea wasn’t, in fact, brilliant. The progression wasn’t as clear as
+I hoped, the dominant color extracted wasn’t generally the most
+appealing shade, the creation took a long time (a couple of seconds per
+image), and it took hundreds of images to make something cool (<a class="reference external" href="#figure-11.1">Figure
+11.1</a>).</p>
+<div class="center figure"><p><img alt="Figure 11.1 - Sunflower layout" src="chapters/image-filters-images/sunflower.jpg" /></p>
+</div><p>Figure 11.1 - Sunflower layout</p>
+<p>You might think this would be discouraging, but by the time I got to
+this point I had learned many things that hadn’t come my way before —
+about color spaces and pixel manipulation — and I had started making
+those cool partially colored images, the kind you find on postcards of
+London with a red bus or phone booth and everything else in grayscale.</p>
+<p>I used a framework called <a class="reference external" href="https://processing.org/">Processing</a> because I was familiar with it
+from developing programming curricula, and because I knew it made it
+easy to create visual applications. It’s a tool originally designed for
+artists, so it abstracts away much of the boilerplate. It allowed me to
+play and experiment.</p>
+<p>University, and later work, filled up my time with other people’s ideas
+and priorities. Part of finishing this project was learning how to carve
+out time to make progress on my own ideas; I required about four hours
+of good mental time a week. A tool that allowed me to move faster was
+therefore really helpful, even necessary—although it came with its own
+set of problems, especially around writing tests.</p>
+<p>I felt that thorough tests were especially important for validating how
+the project was working, and for making it easier to pick up and resume
+a project that was often on ice for weeks, even months at a time. Tests
+(and blogposts!) formed the documentation for this project. I could
+leave failing tests to document what should happen that I hadn’t figured
+out yet, and make changes with confidence that if I changed something
+that I had forgotten was critical, the tests would remind me.</p>
+<p>This chapter will cover some details about Processing and talk you
+through color spaces, decomposing an image into pixels and manipulating
+them, and unit testing something that wasn’t designed with testing in
+mind. But I hope it will also prompt you to make some progress on
+whatever idea you haven’t made time for lately; even if your idea turns
+out to be as terrible as mine was, you may make something cool and learn
+something fascinating in the process.</p>
+<p class="rubric" id="the-app">The App</p>
+<p>This chapter will show you how to create an image filter application
+that you can use to manipulate your digital images using filters that
+you create. We'll use Processing, a programming language and development
+environment built in Java. We’ll cover setting up the application in
+Processing, some of the features of Processing, aspects of color
+representation, and how to create color filters (mimicking what was used
+in old-fashioned photography). We'll also create a special kind of
+filter that can only be done digitally: determining the dominant hue of
+an image and showing or hiding it, to create eerie partially colored
+images.</p>
+<p>Finally, we’ll add a thorough test suite, and cover how to handle some
+of the limitations of Processing when it comes to testability.</p>
+<p class="rubric" id="background">Background</p>
+<p>Today we can take a photo, manipulate it, and share it with all our
+friends in a matter of seconds. However, a long long time ago (in
+digital terms), it was a process that took weeks.</p>
+<p>In the old days, we would take the picture, then when we had used a
+whole roll of film, we would take it in to be developed (often at the
+pharmacy). We'd pick up the developed pictures some days later—and
+discover that there was something wrong with many of them. Hand not
+steady enough? Random person or thing that we didn’t notice at the time?
+Overexposed? Underexposed? Of course by then it was too late to remedy
+the problem.</p>
+<p>The process that turned the film into pictures was one that most people
+didn’t understand. Light was a problem, so you had to be careful with
+the film. There was a process, involving darkened rooms and chemicals,
+that they sometimes showed in films or on TV.</p>
+<p>But probably even fewer people understand how we get from the
+point-and-click on our smartphone camera to an image on Instagram. There
+are actually many similarities.</p>
+<p class="rubric" id="photographs-the-old-way">Photographs, the Old Way</p>
+<p>Photographs are created by the effect of light on a light-sensitive
+surface. Photographic film is covered in silver halide crystals. (Extra
+layers are used to create color photographs — for simplicity let’s just
+stick to black-and-white photography here.)</p>
+<p>When talking an old-fashioned photograph — with film — the light hits
+the film according to what you’re pointing at, and the crystals at those
+points are changed in varying degrees, according to the amount of light.
+Then, the <a class="reference external" href="http://photography.tutsplus.com/tutorials/step-by-step-guide-to-developing-black-and-white-t-max-film--photo-2580">development process</a> converts the silver salts to metallic
+silver, creating the negative. The negative has the light and dark areas
+of the image inverted. Once the negatives have been developed, there is
+another series of steps to reverse the image and print it.</p>
+<p class="rubric" id="photographs-the-digital-way">Photographs, the Digital Way</p>
+<p>When taking pictures using our smartphones or digital cameras, there is
+no film. There is something called an <em>active-pixel sensor</em> which
+functions in a similar way. Where we used to have silver crystals, now
+we have pixels — tiny squares. (In fact, pixel is short for &quot;picture
+element&quot;.) Digital images are made up of pixels, and the higher the
+resolution the more pixels there are. This is why low-resolution images
+are described as &quot;pixelated&quot; — you can start to see the squares. These
+pixels are stored in an array, with the number in each array &quot;box&quot;
+containing the color.</p>
+<p>In <a class="reference external" href="#figure-11.2">Figure 11.2</a>, we see a high-resolution picture of some blow-up
+animals taken at MoMA in NYC. <a class="reference external" href="#figure-11.3">Figure 11.3</a> is the same image blown up,
+but with just 24 x 32 pixels.</p>
+<div class="center figure"><p><img alt="Figure 11.2 - Blow-up animals at MoMA NY" src="chapters/image-filters-images/animals.jpg" /></p>
+</div><p>Figure 11.2 - Blow-up animals at MoMA NY</p>
+<div class="center figure"><p><img alt="Figure 11.3 - Blow-up animals, blown up" src="chapters/image-filters-images/pixelanimals.jpg" /></p>
+</div><p>Figure 11.3 - Blow-up animals, blown up</p>
+<p>See how it's so blurry? We call that <em>pixelation</em>, which means the image
+is too big for the number of pixels it contains and the squares become
+visible. Here we can use it to get a better sense of an image being made
+up of squares of color.</p>
+<p>What do these pixels look like? If we print out the colors of some of
+the pixels in the middle (10,10 to 10,14) using the handy
+<code class="docutils literal"><span class="pre">Integer.toHexString</span></code> in Java, we get hex colors:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">FFE8B1</span>
+<span class="n">FFFAC4</span>
+<span class="n">FFFCC3</span>
+<span class="n">FFFCC2</span>
+<span class="n">FFF5B7</span>
+</pre></div>
+</div>
+<p>Hex colors are six characters long. The first two are the red value, the
+second two the green value, and the third two the blue value. Sometimes
+there are an extra two characters which are the alpha value. In this
+case <code class="docutils literal"><span class="pre">FFFAC4</span></code> means:</p>
+<ul class="simple">
+<li>red = FF (hex) = 255 (base 10)</li>
+<li>green = FA (hex) = 250 (base 10)</li>
+<li>blue = C4 (hex) = 196 (base 10)</li>
+</ul>
+<p class="rubric" id="running-the-app">Running the App</p>
+<p>In <a class="reference external" href="#figure-11.4">Figure 11.4</a>, we have a picture of our app running. It’s very much
+developer-designed, I know, but we only have 500 lines of Java to work
+with so something had to suffer! You can see the list of commands on the
+right. Some things we can do:</p>
+<ul class="simple">
+<li>Adjust the RGB filters.</li>
+<li>Adjust the “hue tolerance”.</li>
+<li>Set the dominant hue filters, to either show or hide the dominant
+hue.</li>
+<li>Apply our current setting (it is infeasible to run this every key
+press).</li>
+<li>Reset the image.</li>
+<li>Save the image we have made.</li>
+</ul>
+<div class="center figure"><p><img alt="Figure 11.4 - The App" src="chapters/image-filters-images/app.jpg" /></p>
+</div><p>Figure 11.4 - The App</p>
+<p>Processing makes it simple to create a little application and do image
+manipulation; it has a very visual focus. We’ll work with the Java-based
+version, although Processing has now been ported to other languages.</p>
+<p>For this tutorial, I use Processing in Eclipse by adding <code class="docutils literal"><span class="pre">core.jar</span></code> to
+my build path. If you want, you can use the Processing IDE, which
+removes the need for a lot of boilerplate Java code. If you later want
+to port it over to Processing.js and upload it online, you need to
+replace the file chooser with something else.</p>
+<p>There are detailed instructions with screenshots in the project's
+<a class="reference external" href="https://github.com/aosabook/500lines/blob/master/image-filters/SETUP.MD">repository</a>. If you are familiar with Eclipse and Java already you may
+not need them.</p>
+<p class="rubric" id="processing-basics">Processing Basics</p>
+<p class="rubric" id="size-and-color">Size and Color</p>
+<p>We don’t want our app to be a tiny grey window, so the two essential
+methods that we will start by overriding are <code class="docutils literal"><span class="pre">`setup()```_,</span> <span class="pre">and</span>
+<span class="pre">```draw()```_.</span> <span class="pre">The</span> <span class="pre">``setup()</span></code> method is only called when the app
+starts, and is where we do things like set the size of the app window.
+The <code class="docutils literal"><span class="pre">draw()</span></code> method is called for every animation, or after some
+action can be triggered by calling <code class="docutils literal"><span class="pre">redraw()</span></code>. (As covered in the
+Processing Documentation, <code class="docutils literal"><span class="pre">draw()</span></code> should not be called explicitly.)</p>
+<p>Processing is designed to work nicely to create animated sketches, but
+in this case we don’t want animation<a class="reference external" href="#fn1">:sup:`1`</a>, we want to respond to
+key presses. To prevent animation (which would be a drag on performance)
+we will call <code class="docutils literal"><span class="pre">`noLoop()```_</span> <span class="pre">from</span> <span class="pre">setup.</span> <span class="pre">This</span> <span class="pre">means</span> <span class="pre">that</span> <span class="pre">``draw()</span></code> will
+only be called immediately after <code class="docutils literal"><span class="pre">setup()</span></code>, and whenever we call
+<code class="docutils literal"><span class="pre">redraw()</span></code>.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">WIDTH</span> <span class="o">=</span> <span class="mi">360</span><span class="p">;</span>
+<span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">HEIGHT</span> <span class="o">=</span> <span class="mi">240</span><span class="p">;</span>
+
+<span class="n">public</span> <span class="n">void</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+  <span class="n">noLoop</span><span class="p">();</span>
+
+  <span class="o">//</span> <span class="n">Set</span> <span class="n">up</span> <span class="n">the</span> <span class="n">view</span><span class="o">.</span>
+  <span class="n">size</span><span class="p">(</span><span class="n">WIDTH</span><span class="p">,</span> <span class="n">HEIGHT</span><span class="p">);</span>
+  <span class="n">background</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">public</span> <span class="n">void</span> <span class="n">draw</span><span class="p">()</span> <span class="p">{</span>
+  <span class="n">background</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>These don’t really do much yet, but try running the app again, adjusting
+the constants in <code class="docutils literal"><span class="pre">WIDTH</span></code> and <code class="docutils literal"><span class="pre">HEIGHT</span></code>, to see different sizes.</p>
+<p><code class="docutils literal"><span class="pre">background(0)</span></code> specifies a black background. Try changing the number
+passed to <code class="docutils literal"><span class="pre">background()</span></code> and see what happens — it’s the alpha value,
+and so if you only pass one number in, it is always greyscale.
+Alternatively, you can call <code class="docutils literal"><span class="pre">background(int</span> <span class="pre">r,</span> <span class="pre">int</span> <span class="pre">g,</span> <span class="pre">int</span> <span class="pre">b)</span></code>.</p>
+<p class="rubric" id="pimage">PImage</p>
+<p>The <a class="reference external" href="http://processing.org/reference/PImage.html">PImage object</a> is the Processing object that represents an image.
+We’re going to be using this a lot, so it’s worth reading through the
+documentation. It has three fields (Table 11.1) as well as some methods
+that we will use (Table 11.2).</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="78%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">pixels[]</span></code></td>
+<td>Array containing the color of every pixel in the image</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">width</span></code></td>
+<td>Image width in pixels</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">height</span></code></td>
+<td>Image height in pixels</td>
+</tr>
+</tbody>
+</table>
+<p>: <strong>Table 11.1</strong> - PImage fields</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="23%" />
+<col width="77%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">loadPixels</span></code></td>
+<td>Loads the pixel data for the image into its <code class="docutils literal"><span class="pre">pixels[]</span></code> array</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">updatePixels</span></code></td>
+<td>Updates the image with the data in its <code class="docutils literal"><span class="pre">pixels[]</span></code> array</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">resize</span></code></td>
+<td>Changes the size of an image to a new width and height</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">get</span></code></td>
+<td>Reads the color of any pixel or grabs a rectangle of pixels</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">set</span></code></td>
+<td>Writes a color to any pixel or writes an image into another</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">save</span></code></td>
+<td>Saves the image to a TIFF, TARGA, PNG, or JPEG file</td>
+</tr>
+</tbody>
+</table>
+<p>: <strong>Table 11.2</strong> - PImage methods</p>
+<p class="rubric" id="file-chooser">File Chooser</p>
+<p>Processing handles most of the file choosing process; we just need to
+call <a href="#id3"><span class="problematic" id="id4">``</span></a><a href="#id8"><span class="problematic" id="id9">`selectInput()```_</span></a>, and implement a callback (which must be
+public).</p>
+<p>To people familiar with Java this might seem odd; a listener or a lambda
+expression might make more sense. However, as Processing was developed
+as a tool for artists, for the most part these things have been
+abstracted away by the language to keep it unintimidating. This is a
+choice the designers made: to prioritize simplicity and approachability
+over power and flexibility. If you use the stripped-down Processing
+editor, rather than Processing as a library in Eclipse, you don’t even
+need to define class names.</p>
+<p>Other language designers with different target audiences make different
+choices, as they should. For example, in Haskell, a purely functional
+language, purity of functional language paradigms is prioritised over
+everything else. This makes it a better tool for mathematical problems
+than for anything requiring IO.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="o">//</span> <span class="n">Called</span> <span class="n">on</span> <span class="n">key</span> <span class="n">press</span><span class="o">.</span>
+<span class="n">private</span> <span class="n">void</span> <span class="n">chooseFile</span><span class="p">()</span> <span class="p">{</span>
+  <span class="o">//</span> <span class="n">Choose</span> <span class="n">the</span> <span class="n">file</span><span class="o">.</span>
+  <span class="n">selectInput</span><span class="p">(</span><span class="s2">&quot;Select a file to process:&quot;</span><span class="p">,</span> <span class="s2">&quot;fileSelected&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">public</span> <span class="n">void</span> <span class="n">fileSelected</span><span class="p">(</span><span class="n">File</span> <span class="n">file</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">file</span> <span class="o">==</span> <span class="n">null</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">println</span><span class="p">(</span><span class="s2">&quot;User hit cancel.&quot;</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="o">//</span> <span class="n">save</span> <span class="n">the</span> <span class="n">image</span>
+    <span class="n">redraw</span><span class="p">();</span> <span class="o">//</span> <span class="n">update</span> <span class="n">the</span> <span class="n">display</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p class="rubric" id="responding-to-key-presses">Responding to Key Presses</p>
+<p>Normally in Java, responding to key presses requires adding listeners
+and implementing anonymous functions. However, as with the file chooser,
+Processing handles a lot of this for us. We just need to implement
+<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id10"><span class="problematic" id="id11">`keyPressed()```_</span></a>.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span>public void keyPressed() {
+  print(“key pressed: ” + key);
+}
+</pre></div>
+</div>
+<p>If you run the app again, every time you press a key it will output it
+to the console. Later, you’ll want to do different things depending on
+what key was pressed, and to do this you just switch on the key value.
+(This exists in the <code class="docutils literal"><span class="pre">PApplet</span></code> superclass, and contains the last key
+pressed.)</p>
+<p class="rubric" id="writing-tests">Writing Tests</p>
+<p>This app doesn’t do a lot yet, but we can already see number of places
+where things can go wrong; for example, triggering the wrong action with
+key presses. As we add complexity, we add more potential problems, such
+as updating the image state incorrectly, or miscalculating pixel colors
+after applying a filter. I also just enjoy (some think weirdly) writing
+unit tests. Whilst some people seem to think of testing as a thing that
+delays checking code in, I see tests as my #1 debugging tool, and as an
+opportunity to deeply understand what is going on in my code.</p>
+<p>I adore Processing, but it’s designed to create visual applications, and
+in this area maybe unit testing isn’t a huge concern. It’s clear it
+isn’t written for testability; in fact it’s written in such a way that
+makes it untestable, as is. Part of this is because it hides complexity,
+and some of that hidden complexity is really useful in writing unit
+tests. The use of static and final methods make it much harder to use
+mocks (objects that record interaction and allow you to fake part of
+your system to verify another part is behaving correctly), which rely on
+the ability to subclass.</p>
+<p>We might start a greenfield project with great intentions to do Test
+Driven Development (TDD) and achieve perfect test coverage, but in
+reality we are usually looking at a mass of code written by various and
+assorted people and trying to figure out what it is supposed to be
+doing, and how and why it is going wrong. Then maybe we don’t write
+perfect tests, but writing tests at all will help us navigate the
+situation, document what is happening and move forward.</p>
+<p>We create &quot;seams&quot; that allow us to break something up from its amorphous
+mass of tangled pieces and verify it in parts. To do this, we will
+sometimes create wrapper classes that can be mocked. These classes do
+nothing more than hold a collection of similar methods, or forward calls
+on to another object that cannot be mocked (due to final or static
+methods), and as such they are very dull to write, but key to creating
+seams and making the code testable.</p>
+<p>I used JUnit for tests, as I was working in Java with Processing as a
+library. For mocking I used Mockito. You can download <a class="reference external" href="https://code.google.com/p/mockito/downloads/list">Mockito</a> and add
+the JAR to your buildpath in the same way you added <code class="docutils literal"><span class="pre">core.jar</span></code>. I
+created two helper classes that make it possible to mock and test the
+app (otherwise we can’t test behavior involving <code class="docutils literal"><span class="pre">PImage</span></code> or
+<code class="docutils literal"><span class="pre">PApplet</span></code> methods).</p>
+<p><code class="docutils literal"><span class="pre">IFAImage</span></code> is a thin wrapper around PImage. <code class="docutils literal"><span class="pre">PixelColorHelper</span></code> is a
+wrapper around applet pixel color methods. These wrappers call the
+final, and static methods, but the caller methods are neither final nor
+static themselves — this allows them to be mocked. These are
+deliberately lightweight, and we could have gone further, but this was
+sufficient to address the major problem of testability when using
+Processing — static, and final methods. The goal was to make an app,
+after all — not a unit testing framework for Processing!</p>
+<p>A class called <code class="docutils literal"><span class="pre">ImageState</span></code> forms the &quot;model&quot; of this application,
+removing as much logic from the class extending <code class="docutils literal"><span class="pre">PApplet</span></code> as possible,
+for better testability. It also makes for a cleaner design and
+separation of concerns: the <code class="docutils literal"><span class="pre">App</span></code> controls the interactions and the
+UI, not the image manipulation.</p>
+<p class="rubric" id="do-it-yourself-filters">Do-It-Yourself Filters</p>
+<p class="rubric" id="rgb-filters">RGB Filters</p>
+<p>Before we start writing more complicated pixel processing, we can start
+with a short exercise that will get us comfortable doing pixel
+manipulation. We’ll create standard (red, green, blue) color filters
+that will allow us to create the same effect as placing a colored plate
+over the lens of a camera, only letting through light with enough red
+(or green, or blue).</p>
+<p>By applying different filters to this image <a class="reference external" href="#figure-11.5">Figure 11.5</a> (taken on a
+spring trip to Frankfurt) it’s almost like the seasons are different.
+(Remember the four-seasons paintings we imagined earlier?) See how much
+more green the tree becomes when the red filter is applied.</p>
+<div class="center figure"><p><img alt="Figure 11.5 - Four (Simulated) Seasons in Frankfurt" src="chapters/image-filters-images/frankfurt.jpg" /></p>
+</div><p>Figure 11.5 - Four (Simulated) Seasons in Frankfurt</p>
+<p>How do we do it?</p>
+<ul class="simple">
+<li>Set the filter. (You can combine red, green and blue filters as in
+the image earlier; I haven’t in these examples so that the effect is
+clearer.)</li>
+<li>For each pixel in the image, check its RGB value.</li>
+<li>If the red is less than the red filter, set the red to zero.</li>
+<li>If the green is less than the green filter, set the green to zero.</li>
+<li>If the blue is less than the blue filter, set the blue to zero.</li>
+<li>Any pixel with insufficient of all of these colors will be black.</li>
+</ul>
+<p>Although our image is 2-dimensional, the pixels live in a 1-dimensional
+array starting top-left and moving <a class="reference external" href="https://processing.org/tutorials/pixels/">left to right, top to bottom</a>. The
+array indices for a 4x4 image are shown here:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>0</td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+</tr>
+<tr class="row-even"><td>4</td>
+<td>5</td>
+<td>6</td>
+<td>7</td>
+</tr>
+<tr class="row-odd"><td>8</td>
+<td>9</td>
+<td>10</td>
+<td>11</td>
+</tr>
+<tr class="row-even"><td>12</td>
+<td>13</td>
+<td>14</td>
+<td>15</td>
+</tr>
+</tbody>
+</table>
+<p>: <strong>Table 11.3</strong> - Pixel indices for a 4x4 image</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span>public void applyColorFilter(PApplet applet, IFAImage img, int minRed,
+      int minGreen, int minBlue, int colorRange) {
+  img.loadPixels();
+  int numberOfPixels = img.getPixels().length;
+  for (int i = 0; i &lt; numberOfPixels; i++) {
+    int pixel = img.getPixel(i);
+    float alpha = pixelColorHelper.alpha(applet, pixel);
+    float red = pixelColorHelper.red(applet, pixel);
+    float green = pixelColorHelper.green(applet, pixel);
+    float blue = pixelColorHelper.blue(applet, pixel);
+
+    red = (red &gt;= minRed) ? red : 0;
+    green = (green &gt;= minGreen) ? green : 0;
+    blue = (blue &gt;= minBlue) ? blue : 0;
+
+    image.setPixel(i, pixelColorHelper.color(applet, red, green, blue, alpha));
+  }
+}
+</pre></div>
+</div>
+<p class="rubric" id="color">Color</p>
+<p>As our first example of an image filter showed, the concept and
+representation of colors in a program is very important to understanding
+how our filters work. To prepare ourselves for working on our next
+filter, let's explore the concept of color a bit more.</p>
+<p>We were using a concept in the previous section called &quot;color space&quot;,
+which is way of representing color digitally. Kids mixing paints learn
+that colors can be made from other colors; things work slightly
+differently in digital (less risk of being covered in paint!) but
+similar. Processing makes it really easy to work with whatever color
+space you want, but you need to know which one to pick, so it’s
+important to understand how they work.</p>
+<p class="rubric" id="rgb-colors">RGB colors</p>
+<p>The color space that most programmers are familiar with is RGBA: red,
+green, blue and alpha; it's what we were using above. In hexadecimal
+(base 16), the first two digits are the amount of red, the second two
+blue, the third two green, and the final two (if they are there) are the
+alpha value. The values range from 00 in base 16 (0 in base 10) through
+to FF (255 in base 10). The alpha represents opacity, where 0 is
+transparent and 100% is opaque.</p>
+<p class="rubric" id="hsb-or-hsv-colors">HSB or HSV colors</p>
+<p>This color space is not quite as well known as RGB. The first number
+represents the hue, the second number the saturation (how intense the
+color is), and the third number the brightness. The HSB color space can
+be represented by a cone: The hue is the position around the cone,
+saturation the distance from the centre, and brightness the height (0
+brightness is black).</p>
+<p class="rubric" id="extracting-the-dominant-hue-from-an-image">Extracting the Dominant Hue from an Image</p>
+<p>Now that we’re comfortable with pixel manipulation, let’s do something
+that we could only do digitally. Digitally, we can manipulate the image
+in a way that isn’t so uniform.</p>
+<p>When I look through my stream of pictures I can see themes emerging. The
+nighttime series I took at sunset from a boat on Hong Kong harbour, the
+grey of North Korea, the lush greens of Bali, the icy whites and pale
+blues of an Icelandic winter. Can we take a picture and pull out that
+main color that dominates the scene?</p>
+<p>It makes sense to use the HSB color space for this — we are interested
+in the hue when figuring out what the main color is. It’s possible to do
+this using RGB values, but more difficult (we would have to compare all
+three values) and it would be more sensitive to darkness. We can change
+to the HSB color space using <a class="reference external" href="http://processing.org/reference/colorMode_.html">colorMode</a>.</p>
+<p>Having settled on this color space, it’s simpler than it would have been
+using RGB. We need to find the hue of each pixel, and figure out which
+is most &quot;popular&quot;. We probably don’t want to be exact — we want to group
+very similar hues together, and we can handle this using two strategies.</p>
+<p>Firstly we will round the decimals that come back to whole numbers, as
+this makes it simple to determine which &quot;bucket&quot; we put each pixel in.
+Secondly we can change the range of the hues. If we think back to the
+cone representation above, we might think of hues as having 360 degrees
+(like a circle). Processing uses 255 by default, which is the same as is
+typical for RGB (255 is FF in hexadecimal). The higher the range we use,
+the more distinct the hues in the picture will be. Using a smaller range
+will allow us to group together similar hues. Using a 360 degree range,
+it’s unlikely that we will be able to tell the difference between a hue
+of 224 and a hue of 225, as the difference is very small. If we make the
+range one-third of that, 120, both these hues become 75 after rounding.</p>
+<p>We can change the range of hues using <code class="docutils literal"><span class="pre">colorMode</span></code>. If we call
+<code class="docutils literal"><span class="pre">colorMode(HSB,</span> <span class="pre">120)</span></code> we have just made our hue detection a bit less
+than half as exact as if we used the 255 range. We also know that our
+hues will fall into 120 &quot;buckets&quot;, so we can simply go through our
+image, get the hue for a pixel, and add one to the corresponding count
+in an array. This will be \(O(n)\), where \(n\) is the number of
+pixels, as it requires action on each one.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="k">for</span><span class="p">(</span><span class="nb">int</span> <span class="n">px</span> <span class="ow">in</span> <span class="n">pixels</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nb">int</span> <span class="n">hue</span> <span class="o">=</span> <span class="n">Math</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">hue</span><span class="p">(</span><span class="n">px</span><span class="p">));</span>
+  <span class="n">hues</span><span class="p">[</span><span class="n">hue</span><span class="p">]</span><span class="o">++</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>At the end we can print this hue to the screen, or display it next to
+the picture (<a class="reference external" href="#figure-11.6">Figure 11.6</a>).</p>
+<div class="center figure"><p><img alt="Figure 11.6 - Dominant hue versus size of range (number of buckets) used" src="chapters/image-filters-images/hueranges.jpg" /></p>
+</div><p>Figure 11.6 - Dominant hue versus size of range (number of buckets) used</p>
+<p>Once we’ve extracted the &quot;dominant&quot; hue, we can choose to either show or
+hide it in the image. We can show the dominant hue with varying
+tolerance (ranges around it that we will accept). Pixels that don’t fall
+into this range can be changed to grayscale by setting the value based
+on the brightness. <a class="reference external" href="#figure-11.7">Figure 11.7</a> shows the dominant hue determined
+using a range of 240, and with varying tolerance. The tolerance is the
+amount either side of the most popular hue that gets grouped together.</p>
+<div class="center figure"><p><img alt="Figure 11.7 - Showing dominant hue" src="chapters/image-filters-images/showdominant.jpg" /></p>
+</div><p>Figure 11.7 - Showing dominant hue</p>
+<p>Alternatively, we can hide the dominant hue. In <a class="reference external" href="#figure-11.8">Figure 11.8</a>, the
+images are transposed side by side: the original in the middle, on the
+left the dominant hue (the brownish color of the path) is shown, and on
+the right the dominant hue is hidden (range 320, tolerance 20).</p>
+<div class="center figure"><p><img alt="Figure 11.8 - Hiding dominant hue" src="chapters/image-filters-images/hidedominant.jpg" /></p>
+</div><p>Figure 11.8 - Hiding dominant hue</p>
+<p>Each image requires a double pass (looking at each pixel twice), so on
+images with a large number of pixels it can take a noticeable amount of
+time.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">public</span> <span class="n">HSBColor</span> <span class="n">getDominantHue</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="n">IFAImage</span> <span class="n">image</span><span class="p">,</span> <span class="nb">int</span> <span class="n">hueRange</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">image</span><span class="o">.</span><span class="n">loadPixels</span><span class="p">();</span>
+  <span class="nb">int</span> <span class="n">numberOfPixels</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">getPixels</span><span class="p">()</span><span class="o">.</span><span class="n">length</span><span class="p">;</span>
+  <span class="nb">int</span><span class="p">[]</span> <span class="n">hues</span> <span class="o">=</span> <span class="n">new</span> <span class="nb">int</span><span class="p">[</span><span class="n">hueRange</span><span class="p">];</span>
+  <span class="nb">float</span><span class="p">[]</span> <span class="n">saturations</span> <span class="o">=</span> <span class="n">new</span> <span class="nb">float</span><span class="p">[</span><span class="n">hueRange</span><span class="p">];</span>
+  <span class="nb">float</span><span class="p">[]</span> <span class="n">brightnesses</span> <span class="o">=</span> <span class="n">new</span> <span class="nb">float</span><span class="p">[</span><span class="n">hueRange</span><span class="p">];</span>
+
+  <span class="k">for</span> <span class="p">(</span><span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numberOfPixels</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nb">int</span> <span class="n">pixel</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">getPixel</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="nb">int</span> <span class="n">hue</span> <span class="o">=</span> <span class="n">Math</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">hue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">pixel</span><span class="p">));</span>
+    <span class="nb">float</span> <span class="n">saturation</span> <span class="o">=</span> <span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">saturation</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">pixel</span><span class="p">);</span>
+    <span class="nb">float</span> <span class="n">brightness</span> <span class="o">=</span> <span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">brightness</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">pixel</span><span class="p">);</span>
+    <span class="n">hues</span><span class="p">[</span><span class="n">hue</span><span class="p">]</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">saturations</span><span class="p">[</span><span class="n">hue</span><span class="p">]</span> <span class="o">+=</span> <span class="n">saturation</span><span class="p">;</span>
+    <span class="n">brightnesses</span><span class="p">[</span><span class="n">hue</span><span class="p">]</span> <span class="o">+=</span> <span class="n">brightness</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="o">//</span> <span class="n">Find</span> <span class="n">the</span> <span class="n">most</span> <span class="n">common</span> <span class="n">hue</span><span class="o">.</span>
+  <span class="nb">int</span> <span class="n">hueCount</span> <span class="o">=</span> <span class="n">hues</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+  <span class="nb">int</span> <span class="n">hue</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">hues</span><span class="o">.</span><span class="n">length</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">hues</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">hueCount</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">hueCount</span> <span class="o">=</span> <span class="n">hues</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+      <span class="n">hue</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="o">//</span> <span class="n">Return</span> <span class="n">the</span> <span class="n">color</span> <span class="n">to</span> <span class="n">display</span><span class="o">.</span>
+  <span class="nb">float</span> <span class="n">s</span> <span class="o">=</span> <span class="n">saturations</span><span class="p">[</span><span class="n">hue</span><span class="p">]</span> <span class="o">/</span> <span class="n">hueCount</span><span class="p">;</span>
+  <span class="nb">float</span> <span class="n">b</span> <span class="o">=</span> <span class="n">brightnesses</span><span class="p">[</span><span class="n">hue</span><span class="p">]</span> <span class="o">/</span> <span class="n">hueCount</span><span class="p">;</span>
+  <span class="k">return</span> <span class="n">new</span> <span class="n">HSBColor</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+<span class="p">}</span>
+
+
+<span class="n">public</span> <span class="n">void</span> <span class="n">processImageForHue</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="n">IFAImage</span> <span class="n">image</span><span class="p">,</span> <span class="nb">int</span> <span class="n">hueRange</span><span class="p">,</span>
+    <span class="nb">int</span> <span class="n">hueTolerance</span><span class="p">,</span> <span class="n">boolean</span> <span class="n">showHue</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">applet</span><span class="o">.</span><span class="n">colorMode</span><span class="p">(</span><span class="n">PApplet</span><span class="o">.</span><span class="n">HSB</span><span class="p">,</span> <span class="p">(</span><span class="n">hueRange</span> <span class="o">-</span> <span class="mi">1</span><span class="p">));</span>
+  <span class="n">image</span><span class="o">.</span><span class="n">loadPixels</span><span class="p">();</span>
+  <span class="nb">int</span> <span class="n">numberOfPixels</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">getPixels</span><span class="p">()</span><span class="o">.</span><span class="n">length</span><span class="p">;</span>
+  <span class="n">HSBColor</span> <span class="n">dominantHue</span> <span class="o">=</span> <span class="n">getDominantHue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">hueRange</span><span class="p">);</span>
+  <span class="o">//</span> <span class="n">Manipulate</span> <span class="n">photo</span><span class="p">,</span> <span class="n">grayscale</span> <span class="nb">any</span> <span class="n">pixel</span> <span class="n">that</span> <span class="n">isn</span><span class="s1">&#39;t close to that hue.</span>
+  <span class="nb">float</span> <span class="n">lower</span> <span class="o">=</span> <span class="n">dominantHue</span><span class="o">.</span><span class="n">h</span> <span class="o">-</span> <span class="n">hueTolerance</span><span class="p">;</span>
+  <span class="nb">float</span> <span class="n">upper</span> <span class="o">=</span> <span class="n">dominantHue</span><span class="o">.</span><span class="n">h</span> <span class="o">+</span> <span class="n">hueTolerance</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numberOfPixels</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nb">int</span> <span class="n">pixel</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">getPixel</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="nb">float</span> <span class="n">hue</span> <span class="o">=</span> <span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">hue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">pixel</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">hueInRange</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">hueRange</span><span class="p">,</span> <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">)</span> <span class="o">==</span> <span class="n">showHue</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nb">float</span> <span class="n">brightness</span> <span class="o">=</span> <span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">brightness</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">pixel</span><span class="p">);</span>
+      <span class="n">image</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">brightness</span><span class="p">));</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="n">image</span><span class="o">.</span><span class="n">updatePixels</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p class="rubric" id="combining-filters">Combining Filters</p>
+<p>With the UI as it is, the user can combine the red, green, and blue
+filters together. If they combine the dominant hue filters with the red,
+green, and blue filters the results can sometimes be a little
+unexpected, because of changing the color spaces.</p>
+<p>Processing has some <a class="reference external" href="https://www.processing.org/reference/filter_.html">built-in methods</a> that support the manipulation of
+images; for example, <code class="docutils literal"><span class="pre">invert</span></code> and <code class="docutils literal"><span class="pre">blur</span></code>.</p>
+<p>To achieve effects like sharpening, blurring, or sepia we apply
+matrices. For every pixel of the image, take the sum of products where
+each product is the color value of the current pixel or a neighbor of
+it, with the corresponding value of the <a class="reference external" href="http://lodev.org/cgtutor/filtering.html">filter matrix</a>. There are some
+special matrices of specific values that sharpen images.</p>
+<p class="rubric" id="architecture">Architecture</p>
+<p>There are three main components to the app (<a class="reference external" href="#figure-11.9">Figure 11.9</a>).</p>
+<p class="rubric" id="the-app-1">The App</p>
+<p>The app consists of one file: <code class="docutils literal"><span class="pre">ImageFilterApp.java</span></code>. This extends
+<code class="docutils literal"><span class="pre">PApplet</span></code> (the Processing app superclass) and handles layout, user
+interaction, etc. This class is the hardest to test, so we want to keep
+it as small as possible.</p>
+<p class="rubric" id="model">Model</p>
+<p>Model consists of three files: <code class="docutils literal"><span class="pre">HSBColor.java</span></code> is a simple container
+for HSB colors (consisting of hue, saturation, and brightness).
+<code class="docutils literal"><span class="pre">IFAImage</span></code> is a wrapper around <code class="docutils literal"><span class="pre">PImage</span></code> for testability. (<code class="docutils literal"><span class="pre">PImage</span></code>
+contains a number of final methods which cannot be mocked.) Finally,
+<code class="docutils literal"><span class="pre">ImageState.java</span></code> is the object which describes the state of the image
+— what level of filters should be applied, and which filters — and
+handles loading the image. (Note: The image needs to be reloaded
+whenever color filters are adjusted down, and whenever the dominant hue
+is recalculated. For clarity, we just reload each time the image is
+processed.)</p>
+<p class="rubric" id="color-1">Color</p>
+<p>Color consists of two files: <code class="docutils literal"><span class="pre">ColorHelper.java</span></code> is where all the image
+processing and filtering takes place, and <code class="docutils literal"><span class="pre">PixelColorHelper.java</span></code>
+abstracts out final <code class="docutils literal"><span class="pre">PApplet</span></code> methods for pixel colors for
+testability.</p>
+<div class="center figure"><p><img alt="Figure 11.9 - Architecture diagram" src="chapters/image-filters-images/architecture.jpg" /></p>
+</div><p>Figure 11.9 - Architecture diagram</p>
+<p class="rubric" id="wrapper-classes-and-tests">Wrapper Classes and Tests</p>
+<p>Briefly mentioned above, there are two wrapper classes (<code class="docutils literal"><span class="pre">IFAImage</span></code> and
+<code class="docutils literal"><span class="pre">PixelColorHelper</span></code>) that wrap library methods for testability. This is
+because, in Java, the keyword &quot;final&quot; indicates a method that cannot be
+overridden or hidden by subclasses, which means they cannot be mocked.</p>
+<p><code class="docutils literal"><span class="pre">PixelColorHelper</span></code> wraps methods on the applet. This means we need to
+pass the applet in to each method call. (Alternatively, we could make it
+a field and set it on initialization.)</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">color</span><span class="p">;</span>
+
+<span class="kn">import</span> <span class="nn">processing.core.PApplet</span><span class="p">;</span>
+
+<span class="n">public</span> <span class="k">class</span> <span class="nc">PixelColorHelper</span> <span class="p">{</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">alpha</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">alpha</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">blue</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">blue</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">brightness</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">brightness</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">int</span> <span class="n">color</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">float</span> <span class="n">greyscale</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">greyscale</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">int</span> <span class="n">color</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">float</span> <span class="n">red</span><span class="p">,</span> <span class="nb">float</span> <span class="n">green</span><span class="p">,</span> <span class="nb">float</span> <span class="n">blue</span><span class="p">,</span>
+           <span class="nb">float</span> <span class="n">alpha</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">green</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">green</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">hue</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">hue</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">red</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">red</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">float</span> <span class="n">saturation</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">pixel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">applet</span><span class="o">.</span><span class="n">saturation</span><span class="p">(</span><span class="n">pixel</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">IFAImage</span></code> is a wrapper around <code class="docutils literal"><span class="pre">PImage</span></code>, so in our app we don’t
+initialize a <code class="docutils literal"><span class="pre">PImage</span></code>, but rather an <code class="docutils literal"><span class="pre">IFAImage</span></code> — although we do
+have to expose the <code class="docutils literal"><span class="pre">PImage</span></code> so that it can be rendered.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">model</span><span class="p">;</span>
+
+<span class="kn">import</span> <span class="nn">processing.core.PApplet</span><span class="p">;</span>
+<span class="kn">import</span> <span class="nn">processing.core.PImage</span><span class="p">;</span>
+
+<span class="n">public</span> <span class="k">class</span> <span class="nc">IFAImage</span> <span class="p">{</span>
+
+  <span class="n">private</span> <span class="n">PImage</span> <span class="n">image</span><span class="p">;</span>
+
+  <span class="n">public</span> <span class="n">IFAImage</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">PImage</span> <span class="n">image</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">image</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">update</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="n">String</span> <span class="n">filepath</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">applet</span><span class="o">.</span><span class="n">loadImage</span><span class="p">(</span><span class="n">filepath</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="o">//</span> <span class="n">Wrapped</span> <span class="n">methods</span> <span class="kn">from</span> <span class="nn">PImage.</span>
+  <span class="n">public</span> <span class="nb">int</span> <span class="n">getHeight</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">image</span><span class="o">.</span><span class="n">height</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">int</span> <span class="n">getPixel</span><span class="p">(</span><span class="nb">int</span> <span class="n">px</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">image</span><span class="o">.</span><span class="n">pixels</span><span class="p">[</span><span class="n">px</span><span class="p">];</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">int</span><span class="p">[]</span> <span class="n">getPixels</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">image</span><span class="o">.</span><span class="n">pixels</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="nb">int</span> <span class="n">getWidth</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">image</span><span class="o">.</span><span class="n">width</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">loadPixels</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">loadPixels</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">resize</span><span class="p">(</span><span class="nb">int</span> <span class="n">width</span><span class="p">,</span> <span class="nb">int</span> <span class="n">height</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">save</span><span class="p">(</span><span class="n">String</span> <span class="n">filepath</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filepath</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">setPixel</span><span class="p">(</span><span class="nb">int</span> <span class="n">px</span><span class="p">,</span> <span class="nb">int</span> <span class="n">color</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">pixels</span><span class="p">[</span><span class="n">px</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">updatePixels</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">updatePixels</span><span class="p">();</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Finally, we have our simple container class, <code class="docutils literal"><span class="pre">HSBColor</span></code>. Note that it
+is immutable (once created, it cannot be changed). Immutable objects are
+better for thread safety (something we have no need of here!) but are
+also easier to understand and reason about. In general, I tend to make
+simple model classes immutable unless I find a good reason for them not
+to be.</p>
+<p>Some of you may know that there are already classes representing color
+in
+<a class="reference external" href="https://www.processing.org/reference/color_datatype.html">Processing</a>
+and in <a class="reference external" href="https://docs.oracle.com/javase/7/docs/api/java/awt/Color.html">Java itself</a>. Without going too much into the details of these,
+both of them are more focused on RGB color, and the Java class in
+particular adds way more complexity than we need. We would probably be
+okay if we did want to use Java’s <code class="docutils literal"><span class="pre">awt.Color</span></code>; however <a class="reference external" href="http://processing.org/reference/javadoc/core/processing/core/PApplet.html">awt GUI
+components cannot be used in Processing</a>, so for our purposes creating
+this simple container class to hold these bits of data we need is
+easiest.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">model</span><span class="p">;</span>
+
+<span class="n">public</span> <span class="k">class</span> <span class="nc">HSBColor</span> <span class="p">{</span>
+
+  <span class="n">public</span> <span class="n">final</span> <span class="nb">float</span> <span class="n">h</span><span class="p">;</span>
+  <span class="n">public</span> <span class="n">final</span> <span class="nb">float</span> <span class="n">s</span><span class="p">;</span>
+  <span class="n">public</span> <span class="n">final</span> <span class="nb">float</span> <span class="n">b</span><span class="p">;</span>
+
+  <span class="n">public</span> <span class="n">HSBColor</span><span class="p">(</span><span class="nb">float</span> <span class="n">h</span><span class="p">,</span> <span class="nb">float</span> <span class="n">s</span><span class="p">,</span> <span class="nb">float</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">this</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+    <span class="n">this</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+    <span class="n">this</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p class="rubric" id="colorhelper-and-associated-tests">ColorHelper and Associated Tests</p>
+<p><code class="docutils literal"><span class="pre">ColorHelper</span></code> is where all the image manipulation lives. The methods
+in this class could be static if not for needing a <code class="docutils literal"><span class="pre">PixelColorHelper</span></code>.
+(Although we won’t get into the debate about the merits of static
+methods here.)</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span>package com.catehuston.imagefilter.color;
+
+import processing.core.PApplet;
+
+import com.catehuston.imagefilter.model.HSBColor;
+import com.catehuston.imagefilter.model.IFAImage;
+
+public class ColorHelper {
+
+  private final PixelColorHelper pixelColorHelper;
+
+  public ColorHelper(PixelColorHelper pixelColorHelper) {
+    this.pixelColorHelper = pixelColorHelper;
+  }
+
+  public boolean hueInRange(float hue, int hueRange, float lower, float upper) {
+    // Need to compensate for it being circular - can go around.
+    if (lower &lt; 0) {
+      lower += hueRange;
+    }
+    if (upper &gt; hueRange) {
+      upper -= hueRange;
+    }
+    if (lower &lt; upper) {
+      return hue &lt; upper &amp;&amp; hue &gt; lower;
+    } else {
+      return hue &lt; upper || hue &gt; lower;
+    }
+  }
+
+  public HSBColor getDominantHue(PApplet applet, IFAImage image, int hueRange) {
+    image.loadPixels();
+    int numberOfPixels = image.getPixels().length;
+    int[] hues = new int[hueRange];
+    float[] saturations = new float[hueRange];
+    float[] brightnesses = new float[hueRange];
+
+    for (int i = 0; i &lt; numberOfPixels; i++) {
+      int pixel = image.getPixel(i);
+      int hue = Math.round(pixelColorHelper.hue(applet, pixel));
+      float saturation = pixelColorHelper.saturation(applet, pixel);
+      float brightness = pixelColorHelper.brightness(applet, pixel);
+      hues[hue]++;
+      saturations[hue] += saturation;
+      brightnesses[hue] += brightness;
+    }
+
+    // Find the most common hue.
+    int hueCount = hues[0];
+    int hue = 0;
+    for (int i = 1; i &lt; hues.length; i++) {
+      if (hues[i] &gt; hueCount) {
+        hueCount = hues[i];
+        hue = i;
+      }
+    }
+
+    // Return the color to display.
+    float s = saturations[hue] / hueCount;
+    float b = brightnesses[hue] / hueCount;
+    return new HSBColor(hue, s, b);
+  }
+
+  public void processImageForHue(PApplet applet, IFAImage image, int hueRange,
+      int hueTolerance, boolean showHue) {
+    applet.colorMode(PApplet.HSB, (hueRange - 1));
+    image.loadPixels();
+    int numberOfPixels = image.getPixels().length;
+    HSBColor dominantHue = getDominantHue(applet, image, hueRange);
+    // Manipulate photo, grayscale any pixel that isn&#39;t close to that hue.
+    float lower = dominantHue.h - hueTolerance;
+    float upper = dominantHue.h + hueTolerance;
+    for (int i = 0; i &lt; numberOfPixels; i++) {
+      int pixel = image.getPixel(i);
+      float hue = pixelColorHelper.hue(applet, pixel);
+      if (hueInRange(hue, hueRange, lower, upper) == showHue) {
+        float brightness = pixelColorHelper.brightness(applet, pixel);
+        image.setPixel(i, pixelColorHelper.color(applet, brightness));
+      }
+    }
+    image.updatePixels();
+  }
+
+  public void applyColorFilter(PApplet applet, IFAImage image, int minRed,
+      int minGreen, int minBlue, int colorRange) {
+    applet.colorMode(PApplet.RGB, colorRange);
+    image.loadPixels();
+    int numberOfPixels = image.getPixels().length;
+    for (int i = 0; i &lt; numberOfPixels; i++) {
+      int pixel = image.getPixel(i);
+      float alpha = pixelColorHelper.alpha(applet, pixel);
+      float red = pixelColorHelper.red(applet, pixel);
+      float green = pixelColorHelper.green(applet, pixel);
+      float blue = pixelColorHelper.blue(applet, pixel);
+
+      red = (red &gt;= minRed) ? red : 0;
+      green = (green &gt;= minGreen) ? green : 0;
+      blue = (blue &gt;= minBlue) ? blue : 0;
+
+      image.setPixel(i, pixelColorHelper.color(applet, red, green, blue, alpha));
+    }
+  }
+}
+</pre></div>
+</div>
+<p>We don't want to test this with whole images, because we want images
+that we know the properties of and reason about. We approximate this by
+mocking the images and making them return an array of pixels — in this
+case, 5. This allows us to verify that the behavior is as expected.
+Earlier we covered the concept of mock objects, and here we see their
+use. We are using
+<a class="reference external" href="http://docs.mockito.googlecode.com/hg/org/mockito/Mockito.html">Mockito</a>
+as our mock object framework.</p>
+<p>To create a mock we use the <code class="docutils literal"><span class="pre">&#64;Mock</span></code> annotation on an instance
+variable, and it will be mocked at runtime by the
+<code class="docutils literal"><span class="pre">MockitoJUnitRunner</span></code>.</p>
+<p>To stub (set the behavior of) a method, we use:</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">when</span><span class="p">(</span><span class="n">mock</span><span class="o">.</span><span class="n">methodCall</span><span class="p">())</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To verify a method was called, we use <code class="docutils literal"><span class="pre">verify(mock.methodCall())</span></code>.</p>
+<p>We'll show a few example test cases here; if you'd like to see the rest,
+visit the source folder for this project in the <a class="reference external" href="https://github.com/aosabook/500lines/tree/master/image-filters">*500 Lines or Less*
+GitHub repository</a>.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">color</span><span class="p">;</span>
+
+<span class="o">/*</span> <span class="o">...</span> <span class="n">Imports</span> <span class="n">omitted</span> <span class="o">...</span> <span class="o">*/</span>
+
+<span class="nd">@RunWith</span><span class="p">(</span><span class="n">MockitoJUnitRunner</span><span class="o">.</span><span class="n">class</span><span class="p">)</span>
+<span class="n">public</span> <span class="k">class</span> <span class="nc">ColorHelperTest</span> <span class="p">{</span>
+
+  <span class="nd">@Mock</span> <span class="n">PApplet</span> <span class="n">applet</span><span class="p">;</span>
+  <span class="nd">@Mock</span> <span class="n">IFAImage</span> <span class="n">image</span><span class="p">;</span>
+  <span class="nd">@Mock</span> <span class="n">PixelColorHelper</span> <span class="n">pixelColorHelper</span><span class="p">;</span>
+
+  <span class="n">ColorHelper</span> <span class="n">colorHelper</span><span class="p">;</span>
+
+  <span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">px1</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">px2</span> <span class="o">=</span> <span class="mi">1010</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">px3</span> <span class="o">=</span> <span class="mi">1030</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">px4</span> <span class="o">=</span> <span class="mi">1040</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">px5</span> <span class="o">=</span> <span class="mi">1050</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span><span class="p">[]</span> <span class="n">pixels</span> <span class="o">=</span> <span class="p">{</span> <span class="n">px1</span><span class="p">,</span> <span class="n">px2</span><span class="p">,</span> <span class="n">px3</span><span class="p">,</span> <span class="n">px4</span><span class="p">,</span> <span class="n">px5</span> <span class="p">};</span>
+
+  <span class="nd">@Before</span> <span class="n">public</span> <span class="n">void</span> <span class="n">setUp</span><span class="p">()</span> <span class="n">throws</span> <span class="ne">Exception</span> <span class="p">{</span>
+    <span class="n">colorHelper</span> <span class="o">=</span> <span class="n">new</span> <span class="n">ColorHelper</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getPixels</span><span class="p">())</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">pixels</span><span class="p">);</span>
+    <span class="n">setHsbValuesForPixel</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">px1</span><span class="p">,</span> <span class="mi">30</span><span class="n">F</span><span class="p">,</span> <span class="mi">5</span><span class="n">F</span><span class="p">,</span> <span class="mi">10</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setHsbValuesForPixel</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">px2</span><span class="p">,</span> <span class="mi">20</span><span class="n">F</span><span class="p">,</span> <span class="mi">6</span><span class="n">F</span><span class="p">,</span> <span class="mi">11</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setHsbValuesForPixel</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">px3</span><span class="p">,</span> <span class="mi">30</span><span class="n">F</span><span class="p">,</span> <span class="mi">7</span><span class="n">F</span><span class="p">,</span> <span class="mi">12</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setHsbValuesForPixel</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">px4</span><span class="p">,</span> <span class="mi">50</span><span class="n">F</span><span class="p">,</span> <span class="mi">8</span><span class="n">F</span><span class="p">,</span> <span class="mi">13</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setHsbValuesForPixel</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">px5</span><span class="p">,</span> <span class="mi">30</span><span class="n">F</span><span class="p">,</span> <span class="mi">9</span><span class="n">F</span><span class="p">,</span> <span class="mi">14</span><span class="n">F</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">private</span> <span class="n">void</span> <span class="n">setHsbValuesForPixel</span><span class="p">(</span><span class="nb">int</span> <span class="n">px</span><span class="p">,</span> <span class="nb">int</span> <span class="n">color</span><span class="p">,</span> <span class="nb">float</span> <span class="n">h</span><span class="p">,</span> <span class="nb">float</span> <span class="n">s</span><span class="p">,</span> <span class="nb">float</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getPixel</span><span class="p">(</span><span class="n">px</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">color</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">hue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">saturation</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">brightness</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">private</span> <span class="n">void</span> <span class="n">setRgbValuesForPixel</span><span class="p">(</span><span class="nb">int</span> <span class="n">px</span><span class="p">,</span> <span class="nb">int</span> <span class="n">color</span><span class="p">,</span> <span class="nb">float</span> <span class="n">r</span><span class="p">,</span> <span class="nb">float</span> <span class="n">g</span><span class="p">,</span> <span class="nb">float</span> <span class="n">b</span><span class="p">,</span>
+            <span class="nb">float</span> <span class="n">alpha</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getPixel</span><span class="p">(</span><span class="n">px</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">color</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">red</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">green</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">g</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">blue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">alpha</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">color</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="n">alpha</span><span class="p">);</span>
+  <span class="p">}</span>
+
+    <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testHsbColorFromImage</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">HSBColor</span> <span class="n">color</span> <span class="o">=</span> <span class="n">colorHelper</span><span class="o">.</span><span class="n">getDominantHue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">loadPixels</span><span class="p">();</span>
+
+    <span class="n">assertEquals</span><span class="p">(</span><span class="mi">30</span><span class="n">F</span><span class="p">,</span> <span class="n">color</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="mi">7</span><span class="n">F</span><span class="p">,</span> <span class="n">color</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="mi">12</span><span class="n">F</span><span class="p">,</span> <span class="n">color</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testProcessImageNoHue</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">11</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">11</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">13</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">13</span><span class="p">);</span>
+    <span class="n">colorHelper</span><span class="o">.</span><span class="n">processImageForHue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">false</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">applet</span><span class="p">)</span><span class="o">.</span><span class="n">colorMode</span><span class="p">(</span><span class="n">PApplet</span><span class="o">.</span><span class="n">HSB</span><span class="p">,</span> <span class="mi">59</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">times</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">loadPixels</span><span class="p">();</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">13</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testApplyColorFilter</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">setRgbValuesForPixel</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">px1</span><span class="p">,</span> <span class="mi">10</span><span class="n">F</span><span class="p">,</span> <span class="mi">12</span><span class="n">F</span><span class="p">,</span> <span class="mi">14</span><span class="n">F</span><span class="p">,</span> <span class="mi">60</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setRgbValuesForPixel</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">px2</span><span class="p">,</span> <span class="mi">20</span><span class="n">F</span><span class="p">,</span> <span class="mi">22</span><span class="n">F</span><span class="p">,</span> <span class="mi">24</span><span class="n">F</span><span class="p">,</span> <span class="mi">70</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setRgbValuesForPixel</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">px3</span><span class="p">,</span> <span class="mi">30</span><span class="n">F</span><span class="p">,</span> <span class="mi">32</span><span class="n">F</span><span class="p">,</span> <span class="mi">34</span><span class="n">F</span><span class="p">,</span> <span class="mi">80</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setRgbValuesForPixel</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">px4</span><span class="p">,</span> <span class="mi">40</span><span class="n">F</span><span class="p">,</span> <span class="mi">42</span><span class="n">F</span><span class="p">,</span> <span class="mi">44</span><span class="n">F</span><span class="p">,</span> <span class="mi">90</span><span class="n">F</span><span class="p">);</span>
+    <span class="n">setRgbValuesForPixel</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">px5</span><span class="p">,</span> <span class="mi">50</span><span class="n">F</span><span class="p">,</span> <span class="mi">52</span><span class="n">F</span><span class="p">,</span> <span class="mi">54</span><span class="n">F</span><span class="p">,</span> <span class="mi">100</span><span class="n">F</span><span class="p">);</span>
+
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">0</span><span class="n">F</span><span class="p">,</span> <span class="mi">0</span><span class="n">F</span><span class="p">,</span> <span class="mi">0</span><span class="n">F</span><span class="p">,</span> <span class="mi">60</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">20</span><span class="n">F</span><span class="p">,</span> <span class="mi">0</span><span class="n">F</span><span class="p">,</span> <span class="mi">0</span><span class="n">F</span><span class="p">,</span> <span class="mi">70</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">15</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">30</span><span class="n">F</span><span class="p">,</span> <span class="mi">32</span><span class="n">F</span><span class="p">,</span> <span class="mi">0</span><span class="n">F</span><span class="p">,</span> <span class="mi">80</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">25</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">40</span><span class="n">F</span><span class="p">,</span> <span class="mi">42</span><span class="n">F</span><span class="p">,</span> <span class="mi">44</span><span class="n">F</span><span class="p">,</span> <span class="mi">90</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">35</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">pixelColorHelper</span><span class="o">.</span><span class="n">color</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">50</span><span class="n">F</span><span class="p">,</span> <span class="mi">52</span><span class="n">F</span><span class="p">,</span> <span class="mi">54</span><span class="n">F</span><span class="p">,</span> <span class="mi">100</span><span class="n">F</span><span class="p">))</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">45</span><span class="p">);</span>
+
+    <span class="n">colorHelper</span><span class="o">.</span><span class="n">applyColorFilter</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">applet</span><span class="p">)</span><span class="o">.</span><span class="n">colorMode</span><span class="p">(</span><span class="n">PApplet</span><span class="o">.</span><span class="n">RGB</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">loadPixels</span><span class="p">();</span>
+
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">25</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">35</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">setPixel</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">45</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Notice that:</p>
+<ul class="simple">
+<li>We use the <code class="docutils literal"><span class="pre">MockitoJUnit</span></code> runner.</li>
+<li>We mock <code class="docutils literal"><span class="pre">PApplet</span></code>, <code class="docutils literal"><span class="pre">IFAImage</span></code> (created for expressly this
+purpose), and <code class="docutils literal"><span class="pre">ImageColorHelper</span></code>.</li>
+<li>Test methods are annotated with <code class="docutils literal"><span class="pre">&#64;Test</span></code><a class="reference external" href="#fn2">:sup:`2`</a>. If you want
+to ignore a test (e.g., whilst debugging) you can add the annotation
+<code class="docutils literal"><span class="pre">&#64;Ignore</span></code>.</li>
+<li>In <code class="docutils literal"><span class="pre">setup()</span></code>, we create the pixel array and have the mock image
+always return it.</li>
+<li>Helper methods make it easier to set expectations for recurring tasks
+(e.g., <code class="docutils literal"><span class="pre">set*ForPixel()</span></code>).</li>
+</ul>
+<p class="rubric" id="image-state-and-associated-tests">Image State and Associated Tests</p>
+<p><code class="docutils literal"><span class="pre">ImageState</span></code> holds the current &quot;state&quot; of the image — the image
+itself, and the settings and filters that will be applied. We'll omit
+the full implementation of <code class="docutils literal"><span class="pre">ImageState</span></code> here, but we'll show how it
+can be tested. You can visit the source repository for this project to
+see the full details.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">model</span><span class="p">;</span>
+
+<span class="kn">import</span> <span class="nn">processing.core.PApplet</span><span class="p">;</span>
+<span class="kn">import</span> <span class="nn">com.catehuston.imagefilter.color.ColorHelper</span><span class="p">;</span>
+
+<span class="n">public</span> <span class="k">class</span> <span class="nc">ImageState</span> <span class="p">{</span>
+
+  <span class="n">enum</span> <span class="n">ColorMode</span> <span class="p">{</span>
+    <span class="n">COLOR_FILTER</span><span class="p">,</span>
+    <span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span>
+    <span class="n">HIDE_DOMINANT_HUE</span>
+  <span class="p">}</span>
+
+  <span class="n">private</span> <span class="n">final</span> <span class="n">ColorHelper</span> <span class="n">colorHelper</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">IFAImage</span> <span class="n">image</span><span class="p">;</span>
+  <span class="n">private</span> <span class="n">String</span> <span class="n">filepath</span><span class="p">;</span>
+
+  <span class="n">public</span> <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">INITIAL_HUE_TOLERANCE</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+
+  <span class="n">ColorMode</span> <span class="n">colorModeState</span> <span class="o">=</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">blueFilter</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">greenFilter</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">hueTolerance</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">redFilter</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="n">public</span> <span class="n">ImageState</span><span class="p">(</span><span class="n">ColorHelper</span> <span class="n">colorHelper</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">this</span><span class="o">.</span><span class="n">colorHelper</span> <span class="o">=</span> <span class="n">colorHelper</span><span class="p">;</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">new</span> <span class="n">IFAImage</span><span class="p">();</span>
+    <span class="n">hueTolerance</span> <span class="o">=</span> <span class="n">INITIAL_HUE_TOLERANCE</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="o">/*</span> <span class="o">...</span> <span class="n">getters</span> <span class="o">&amp;</span> <span class="n">setters</span> <span class="o">*/</span>
+  <span class="n">public</span> <span class="n">void</span> <span class="n">updateImage</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">hueRange</span><span class="p">,</span> <span class="nb">int</span> <span class="n">rgbColorRange</span><span class="p">,</span>
+          <span class="nb">int</span> <span class="n">imageMax</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">processKeyPress</span><span class="p">(</span><span class="n">char</span> <span class="n">key</span><span class="p">,</span> <span class="nb">int</span> <span class="n">inc</span><span class="p">,</span> <span class="nb">int</span> <span class="n">rgbColorRange</span><span class="p">,</span>
+          <span class="nb">int</span> <span class="n">hueIncrement</span><span class="p">,</span> <span class="nb">int</span> <span class="n">hueRange</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">setUpImage</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">imageMax</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+
+  <span class="n">public</span> <span class="n">void</span> <span class="n">resetImage</span><span class="p">(</span><span class="n">PApplet</span> <span class="n">applet</span><span class="p">,</span> <span class="nb">int</span> <span class="n">imageMax</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+
+  <span class="o">//</span> <span class="n">For</span> <span class="n">testing</span> <span class="n">purposes</span> <span class="n">only</span><span class="o">.</span>
+  <span class="n">protected</span> <span class="n">void</span> <span class="nb">set</span><span class="p">(</span><span class="n">IFAImage</span> <span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span> <span class="n">colorModeState</span><span class="p">,</span>
+            <span class="nb">int</span> <span class="n">redFilter</span><span class="p">,</span> <span class="nb">int</span> <span class="n">greenFilter</span><span class="p">,</span> <span class="nb">int</span> <span class="n">blueFilter</span><span class="p">,</span> <span class="nb">int</span> <span class="n">hueTolerance</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Here we can test that the appropriate actions happen for the given
+state; that fields are incremented and decremented appropriately.</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">model</span><span class="p">;</span>
+
+<span class="o">/*</span> <span class="o">...</span> <span class="n">Imports</span> <span class="n">omitted</span> <span class="o">...</span> <span class="o">*/</span>
+
+<span class="nd">@RunWith</span><span class="p">(</span><span class="n">MockitoJUnitRunner</span><span class="o">.</span><span class="n">class</span><span class="p">)</span>
+<span class="n">public</span> <span class="k">class</span> <span class="nc">ImageStateTest</span> <span class="p">{</span>
+
+  <span class="nd">@Mock</span> <span class="n">PApplet</span> <span class="n">applet</span><span class="p">;</span>
+  <span class="nd">@Mock</span> <span class="n">ColorHelper</span> <span class="n">colorHelper</span><span class="p">;</span>
+  <span class="nd">@Mock</span> <span class="n">IFAImage</span> <span class="n">image</span><span class="p">;</span>
+
+  <span class="n">private</span> <span class="n">ImageState</span> <span class="n">imageState</span><span class="p">;</span>
+
+  <span class="nd">@Before</span> <span class="n">public</span> <span class="n">void</span> <span class="n">setUp</span><span class="p">()</span> <span class="n">throws</span> <span class="ne">Exception</span> <span class="p">{</span>
+    <span class="n">imageState</span> <span class="o">=</span> <span class="n">new</span> <span class="n">ImageState</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">private</span> <span class="n">void</span> <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span> <span class="n">colorMode</span><span class="p">,</span> <span class="nb">int</span> <span class="n">redFilter</span><span class="p">,</span>
+      <span class="nb">int</span> <span class="n">greenFilter</span><span class="p">,</span> <span class="nb">int</span> <span class="n">blueFilter</span><span class="p">,</span> <span class="nb">int</span> <span class="n">hueTolerance</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="n">colorMode</span><span class="p">,</span> <span class="n">imageState</span><span class="o">.</span><span class="n">getColorMode</span><span class="p">());</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="n">redFilter</span><span class="p">,</span> <span class="n">imageState</span><span class="o">.</span><span class="n">redFilter</span><span class="p">());</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="n">greenFilter</span><span class="p">,</span> <span class="n">imageState</span><span class="o">.</span><span class="n">greenFilter</span><span class="p">());</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="n">blueFilter</span><span class="p">,</span> <span class="n">imageState</span><span class="o">.</span><span class="n">blueFilter</span><span class="p">());</span>
+    <span class="n">assertEquals</span><span class="p">(</span><span class="n">hueTolerance</span><span class="p">,</span> <span class="n">imageState</span><span class="o">.</span><span class="n">hueTolerance</span><span class="p">());</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testUpdateImageDominantHueHidden</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">setFilepath</span><span class="p">(</span><span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">HIDE_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">updateImage</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">500</span><span class="p">);</span>
+
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">)</span><span class="o">.</span><span class="n">processImageForHue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">false</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">)</span><span class="o">.</span><span class="n">applyColorFilter</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">updatePixels</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testUpdateDominantHueShowing</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">setFilepath</span><span class="p">(</span><span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">updateImage</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">500</span><span class="p">);</span>
+
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">)</span><span class="o">.</span><span class="n">processImageForHue</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">true</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">)</span><span class="o">.</span><span class="n">applyColorFilter</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">updatePixels</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testUpdateRGBOnly</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">setFilepath</span><span class="p">(</span><span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">updateImage</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">500</span><span class="p">);</span>
+
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">,</span> <span class="n">never</span><span class="p">())</span><span class="o">.</span><span class="n">processImageForHue</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">PApplet</span><span class="o">.</span><span class="n">class</span><span class="p">),</span>
+                <span class="nb">any</span><span class="p">(</span><span class="n">IFAImage</span><span class="o">.</span><span class="n">class</span><span class="p">),</span> <span class="n">anyInt</span><span class="p">(),</span> <span class="n">anyInt</span><span class="p">(),</span> <span class="n">anyBoolean</span><span class="p">());</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">colorHelper</span><span class="p">)</span><span class="o">.</span><span class="n">applyColorFilter</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">updatePixels</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testKeyPress</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;e&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;h&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">HIDE_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">HIDE_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;u&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">HIDE_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;h&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+
+    <span class="o">//</span> <span class="n">Random</span> <span class="n">key</span> <span class="n">should</span> <span class="n">do</span> <span class="n">nothing</span><span class="o">.</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testSave</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">setFilepath</span><span class="p">(</span><span class="s2">&quot;filepath&quot;</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">200</span><span class="p">);</span>
+
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;filepath-new.png&quot;</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testSetupImageLandscape</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getWidth</span><span class="p">())</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">20</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getHeight</span><span class="p">())</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">setUpImage</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">null</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testSetupImagePortrait</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getWidth</span><span class="p">())</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span>
+    <span class="n">when</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">getHeight</span><span class="p">())</span><span class="o">.</span><span class="n">thenReturn</span><span class="p">(</span><span class="mi">20</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">setUpImage</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="n">null</span><span class="p">);</span>
+    <span class="n">verify</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Test</span> <span class="n">public</span> <span class="n">void</span> <span class="n">testResetImage</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ColorMode</span><span class="o">.</span><span class="n">SHOW_DOMINANT_HUE</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">resetImage</span><span class="p">(</span><span class="n">applet</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">assertState</span><span class="p">(</span><span class="n">ColorMode</span><span class="o">.</span><span class="n">COLOR_FILTER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Notice that:</p>
+<ul class="simple">
+<li>We exposed a protected initialization method <code class="docutils literal"><span class="pre">set</span></code> for testing that
+helps us quickly get the system under test into a specific state.</li>
+<li>We mock <code class="docutils literal"><span class="pre">PApplet</span></code>, <code class="docutils literal"><span class="pre">ColorHelper</span></code>, and <code class="docutils literal"><span class="pre">IFAImage</span></code> (created
+expressly for this purpose).</li>
+<li>This time we use a helper (<code class="docutils literal"><span class="pre">assertState()</span></code>) to simplify asserting
+the state of the image.</li>
+</ul>
+<p class="rubric" id="measuring-test-coverage">Measuring test coverage</p>
+<p>I use <a class="reference external" href="http://www.eclemma.org/installation.html#marketplace">EclEmma</a> to measure test coverage within Eclipse. Overall for
+the app we have 81% test coverage, with none of <code class="docutils literal"><span class="pre">ImageFilterApp</span></code>
+covered, 94.8% for <code class="docutils literal"><span class="pre">ImageState</span></code>, and 100% for <code class="docutils literal"><span class="pre">ColorHelper</span></code>.</p>
+<p class="rubric" id="imagefilterapp">ImageFilterApp</p>
+<p>This is where everything is tied together, but we want as little as
+possible here. The App is hard to unit test (much of it is layout), but
+because we've pushed so much of the app's functionality into our own
+tested classes, we're able to assure ourselves that the important parts
+are working as intended.</p>
+<p>We set the size of the app, and do the layout. (These things are
+verified by running the app and making sure it looks okay — no matter
+how good the test coverage, this step should not be skipped!)</p>
+<div class="code java highlight-default"><div class="highlight"><pre><span></span><span class="n">package</span> <span class="n">com</span><span class="o">.</span><span class="n">catehuston</span><span class="o">.</span><span class="n">imagefilter</span><span class="o">.</span><span class="n">app</span><span class="p">;</span>
+
+<span class="kn">import</span> <span class="nn">java.io.File</span><span class="p">;</span>
+
+<span class="kn">import</span> <span class="nn">processing.core.PApplet</span><span class="p">;</span>
+
+<span class="kn">import</span> <span class="nn">com.catehuston.imagefilter.color.ColorHelper</span><span class="p">;</span>
+<span class="kn">import</span> <span class="nn">com.catehuston.imagefilter.color.PixelColorHelper</span><span class="p">;</span>
+<span class="kn">import</span> <span class="nn">com.catehuston.imagefilter.model.ImageState</span><span class="p">;</span>
+
+<span class="nd">@SuppressWarnings</span><span class="p">(</span><span class="s2">&quot;serial&quot;</span><span class="p">)</span>
+<span class="n">public</span> <span class="k">class</span> <span class="nc">ImageFilterApp</span> <span class="n">extends</span> <span class="n">PApplet</span> <span class="p">{</span>
+
+  <span class="n">static</span> <span class="n">final</span> <span class="n">String</span> <span class="n">INSTRUCTIONS</span> <span class="o">=</span> <span class="s2">&quot;...&quot;</span><span class="p">;</span>
+
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">FILTER_HEIGHT</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">FILTER_INCREMENT</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">HUE_INCREMENT</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">HUE_RANGE</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">IMAGE_MAX</span> <span class="o">=</span> <span class="mi">640</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">RGB_COLOR_RANGE</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">SIDE_BAR_PADDING</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="n">static</span> <span class="n">final</span> <span class="nb">int</span> <span class="n">SIDE_BAR_WIDTH</span> <span class="o">=</span> <span class="n">RGB_COLOR_RANGE</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">SIDE_BAR_PADDING</span> <span class="o">+</span> <span class="mi">50</span><span class="p">;</span>
+
+  <span class="n">private</span> <span class="n">ImageState</span> <span class="n">imageState</span><span class="p">;</span>
+
+  <span class="n">boolean</span> <span class="n">redrawImage</span> <span class="o">=</span> <span class="n">true</span><span class="p">;</span>
+
+  <span class="nd">@Override</span>
+  <span class="n">public</span> <span class="n">void</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">noLoop</span><span class="p">();</span>
+    <span class="n">imageState</span> <span class="o">=</span> <span class="n">new</span> <span class="n">ImageState</span><span class="p">(</span><span class="n">new</span> <span class="n">ColorHelper</span><span class="p">(</span><span class="n">new</span> <span class="n">PixelColorHelper</span><span class="p">()));</span>
+
+    <span class="o">//</span> <span class="n">Set</span> <span class="n">up</span> <span class="n">the</span> <span class="n">view</span><span class="o">.</span>
+    <span class="n">size</span><span class="p">(</span><span class="n">IMAGE_MAX</span> <span class="o">+</span> <span class="n">SIDE_BAR_WIDTH</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">);</span>
+    <span class="n">background</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">chooseFile</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Override</span>
+  <span class="n">public</span> <span class="n">void</span> <span class="n">draw</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">//</span> <span class="n">Draw</span> <span class="n">image</span><span class="o">.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">imageState</span><span class="o">.</span><span class="n">image</span><span class="p">()</span><span class="o">.</span><span class="n">image</span><span class="p">()</span> <span class="o">!=</span> <span class="n">null</span> <span class="o">&amp;&amp;</span> <span class="n">redrawImage</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">background</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+      <span class="n">drawImage</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="n">colorMode</span><span class="p">(</span><span class="n">RGB</span><span class="p">,</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">);</span>
+    <span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">rect</span><span class="p">(</span><span class="n">IMAGE_MAX</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">SIDE_BAR_WIDTH</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">);</span>
+    <span class="n">stroke</span><span class="p">(</span><span class="n">RGB_COLOR_RANGE</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">IMAGE_MAX</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">);</span>
+
+    <span class="o">//</span> <span class="n">Draw</span> <span class="n">red</span> <span class="n">line</span>
+    <span class="nb">int</span> <span class="n">x</span> <span class="o">=</span> <span class="n">IMAGE_MAX</span> <span class="o">+</span> <span class="n">SIDE_BAR_PADDING</span><span class="p">;</span>
+    <span class="nb">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">SIDE_BAR_PADDING</span><span class="p">;</span>
+    <span class="n">stroke</span><span class="p">(</span><span class="n">RGB_COLOR_RANGE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">redFilter</span><span class="p">(),</span> <span class="n">y</span> <span class="o">-</span> <span class="n">FILTER_HEIGHT</span><span class="p">,</span>
+        <span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">redFilter</span><span class="p">(),</span> <span class="n">y</span> <span class="o">+</span> <span class="n">FILTER_HEIGHT</span><span class="p">);</span>
+
+    <span class="o">//</span> <span class="n">Draw</span> <span class="n">green</span> <span class="n">line</span>
+    <span class="n">y</span> <span class="o">+=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">SIDE_BAR_PADDING</span><span class="p">;</span>
+    <span class="n">stroke</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">greenFilter</span><span class="p">(),</span> <span class="n">y</span> <span class="o">-</span> <span class="n">FILTER_HEIGHT</span><span class="p">,</span>
+        <span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">greenFilter</span><span class="p">(),</span> <span class="n">y</span> <span class="o">+</span> <span class="n">FILTER_HEIGHT</span><span class="p">);</span>
+
+    <span class="o">//</span> <span class="n">Draw</span> <span class="n">blue</span> <span class="n">line</span>
+    <span class="n">y</span> <span class="o">+=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">SIDE_BAR_PADDING</span><span class="p">;</span>
+    <span class="n">stroke</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">blueFilter</span><span class="p">(),</span> <span class="n">y</span> <span class="o">-</span> <span class="n">FILTER_HEIGHT</span><span class="p">,</span>
+        <span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">blueFilter</span><span class="p">(),</span> <span class="n">y</span> <span class="o">+</span> <span class="n">FILTER_HEIGHT</span><span class="p">);</span>
+
+    <span class="o">//</span> <span class="n">Draw</span> <span class="n">white</span> <span class="n">line</span><span class="o">.</span>
+    <span class="n">y</span> <span class="o">+=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">SIDE_BAR_PADDING</span><span class="p">;</span>
+    <span class="n">stroke</span><span class="p">(</span><span class="n">HUE_RANGE</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">100</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">line</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">hueTolerance</span><span class="p">(),</span> <span class="n">y</span> <span class="o">-</span> <span class="n">FILTER_HEIGHT</span><span class="p">,</span>
+        <span class="n">x</span> <span class="o">+</span> <span class="n">imageState</span><span class="o">.</span><span class="n">hueTolerance</span><span class="p">(),</span> <span class="n">y</span> <span class="o">+</span> <span class="n">FILTER_HEIGHT</span><span class="p">);</span>
+
+    <span class="n">y</span> <span class="o">+=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">SIDE_BAR_PADDING</span><span class="p">;</span>
+    <span class="n">fill</span><span class="p">(</span><span class="n">RGB_COLOR_RANGE</span><span class="p">);</span>
+    <span class="n">text</span><span class="p">(</span><span class="n">INSTRUCTIONS</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">);</span>
+    <span class="n">updatePixels</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="o">//</span> <span class="n">Callback</span> <span class="k">for</span> <span class="n">selectInput</span><span class="p">(),</span> <span class="n">has</span> <span class="n">to</span> <span class="n">be</span> <span class="n">public</span> <span class="n">to</span> <span class="n">be</span> <span class="n">found</span><span class="o">.</span>
+  <span class="n">public</span> <span class="n">void</span> <span class="n">fileSelected</span><span class="p">(</span><span class="n">File</span> <span class="n">file</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">file</span> <span class="o">==</span> <span class="n">null</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">println</span><span class="p">(</span><span class="s2">&quot;User hit cancel.&quot;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">imageState</span><span class="o">.</span><span class="n">setFilepath</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">getAbsolutePath</span><span class="p">());</span>
+      <span class="n">imageState</span><span class="o">.</span><span class="n">setUpImage</span><span class="p">(</span><span class="n">this</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">);</span>
+      <span class="n">redrawImage</span> <span class="o">=</span> <span class="n">true</span><span class="p">;</span>
+      <span class="n">redraw</span><span class="p">();</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="n">private</span> <span class="n">void</span> <span class="n">drawImage</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">imageMode</span><span class="p">(</span><span class="n">CENTER</span><span class="p">);</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">updateImage</span><span class="p">(</span><span class="n">this</span><span class="p">,</span> <span class="n">HUE_RANGE</span><span class="p">,</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">);</span>
+    <span class="n">image</span><span class="p">(</span><span class="n">imageState</span><span class="o">.</span><span class="n">image</span><span class="p">()</span><span class="o">.</span><span class="n">image</span><span class="p">(),</span> <span class="n">IMAGE_MAX</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">imageState</span><span class="o">.</span><span class="n">image</span><span class="p">()</span><span class="o">.</span><span class="n">getWidth</span><span class="p">(),</span> <span class="n">imageState</span><span class="o">.</span><span class="n">image</span><span class="p">()</span><span class="o">.</span><span class="n">getHeight</span><span class="p">());</span>
+    <span class="n">redrawImage</span> <span class="o">=</span> <span class="n">false</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="nd">@Override</span>
+  <span class="n">public</span> <span class="n">void</span> <span class="n">keyPressed</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">switch</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">case</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span>
+      <span class="n">chooseFile</span><span class="p">();</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="n">case</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span>
+      <span class="n">redrawImage</span> <span class="o">=</span> <span class="n">true</span><span class="p">;</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="n">case</span> <span class="s1">&#39; &#39;</span><span class="p">:</span>
+      <span class="n">imageState</span><span class="o">.</span><span class="n">resetImage</span><span class="p">(</span><span class="n">this</span><span class="p">,</span> <span class="n">IMAGE_MAX</span><span class="p">);</span>
+      <span class="n">redrawImage</span> <span class="o">=</span> <span class="n">true</span><span class="p">;</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">imageState</span><span class="o">.</span><span class="n">processKeyPress</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">FILTER_INCREMENT</span><span class="p">,</span> <span class="n">RGB_COLOR_RANGE</span><span class="p">,</span>
+                <span class="n">HUE_INCREMENT</span><span class="p">,</span> <span class="n">HUE_RANGE</span><span class="p">);</span>
+    <span class="n">redraw</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="n">private</span> <span class="n">void</span> <span class="n">chooseFile</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">//</span> <span class="n">Choose</span> <span class="n">the</span> <span class="n">file</span><span class="o">.</span>
+    <span class="n">selectInput</span><span class="p">(</span><span class="s2">&quot;Select a file to process:&quot;</span><span class="p">,</span> <span class="s2">&quot;fileSelected&quot;</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Notice that:</p>
+<ul class="simple">
+<li>Our implementation extends <code class="docutils literal"><span class="pre">PApplet</span></code>.</li>
+<li>Most work is done in <code class="docutils literal"><span class="pre">ImageState</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">fileSelected()</span></code> is the callback for <code class="docutils literal"><span class="pre">selectInput()</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">static</span> <span class="pre">final</span></code> constants are defined up at the top.</li>
+</ul>
+<p class="rubric" id="the-value-of-prototyping">The Value of Prototyping</p>
+<p>In real world programming, we spend a lot of time on productionisation
+work. Making things look just so. Maintaining 99.9% uptime. We spend
+more time on corner cases than refining algorithms.</p>
+<p>These constraints and requirements are important for our users. However
+there’s also space for freeing ourselves from them to play and explore.</p>
+<p>Eventually, I decided to port this to a native mobile app. Processing
+has an Android library, but as many mobile developers do, I opted to go
+iOS first. I had years of iOS experience, although I’d done little with
+CoreGraphics, but I don’t think even if I had had this idea initially, I
+would have been able to build it straight away on iOS. The platform
+forced me to operate in the RGB color space, and made it hard to extract
+the pixels from the image (hello, C). Memory and waiting was a major
+risk.</p>
+<p>There were exhilarating moments, when it worked for the first time. When
+it first ran on my device... without crashing. When I optimized memory
+usage by 66% and cut seconds off the runtime. And there were large
+periods of time locked away in a dark room, cursing intermittently.</p>
+<p>Because I had my prototype, I could explain to my business partner and
+our designer what I was thinking and what the app would do. It meant I
+deeply understood how it would work, and it was just a question of
+making it work nicely on this other platform. I knew what I was aiming
+for, so at the end of a long day shut away fighting with it and feeling
+like I had little to show for it I kept going… and hit an exhilarating
+moment and milestone the following morning.</p>
+<p>So, how do you find the dominant color in an image? There’s an app for
+that: <a class="reference external" href="http://showandhide.com">Show &amp; Hide</a>.</p>
+<div class="footnotes"><hr class="docutils" />
+<ol class="arabic">
+<li><div class="first"><div id="fn1"></div></div><p>If we wanted to create an animated sketch we would not call
+<code class="docutils literal"><span class="pre">noLoop()</span></code> (or, if we wanted to start animating later, we would
+call <code class="docutils literal"><span class="pre">loop()</span></code>). The frequency of the animation is determined by
+<code class="docutils literal"><span class="pre">frameRate()</span></code>.<a class="reference external" href="#fnref1">↩</a></p>
+</li>
+<li><div class="first"><div id="fn2"></div></div><p>Method names in tests need not start with <code class="docutils literal"><span class="pre">test</span></code> as of JUnit 4, but
+habits are hard to break.<a class="reference external" href="#fnref2">↩</a></p>
+</li>
+</ol>
+</div></div></div></div></div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Learn-Computer-and-Math-again</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="blockcode-a-visual-programming-toolkit.html">500 Lines or Less | Blockcode: A visual programming toolkit</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>快速搜索</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="转向" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, timger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/chapters/making-your-own-image-filters.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

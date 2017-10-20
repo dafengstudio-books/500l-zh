@@ -1,0 +1,1400 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>500 Lines or Less | A Python Interpreter Written in Python &#8212; Learn-Computer-and-Math-again 0.0.1 文档</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="索引" href="../genindex.html" />
+    <link rel="search" title="搜索" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lines-or-less-a-python-interpreter-written-in-python">
+<h1>500 Lines or Less | A Python Interpreter Written in Python<a class="headerlink" href="#lines-or-less-a-python-interpreter-written-in-python" title="永久链接至标题">¶</a></h1>
+<div class="container"><div class="row"><div class="hero-unit"><p><a href="#id1"><span class="problematic" id="id2">``</span></a>_
+.. rubric:: A Python Interpreter Written in Python</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">name:</th><td class="field-body">a-python-interpreter-written-in-python</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p class="author rubric" id="allison-kaptur">Allison Kaptur</p>
+</div></div><div class="row"><div id="content" class="span10 offset1"><p><em>Allison is an engineer at Dropbox, where she helps maintain one of the
+largest networks of Python clients in the world. Before Dropbox, she was
+a facilitator at the Recurse Center, a writers retreat for programmers
+in New York. She's spoken at PyCon North America about Python internals
+and loves weird bugs. She blogs at `akaptur.com`_.</em></p>
+<p><em>(This chapter is also available in `Simplified Chinese`_)</em>.</p>
+<p class="rubric" id="introduction">Introduction</p>
+<p>Byterun is a Python interpreter implemented in Python. Through my work
+on Byterun, I was surprised and delighted to discover that the
+fundamental structure of the Python interpreter fits easily into the
+500-line size restriction. This chapter will walk through the structure
+of the interpreter and give you enough context to explore it further.
+The goal is not to explain everything there is to know about
+interpreters—like so many interesting areas of programming and computer
+science, you could devote years to developing a deep understanding of
+the topic.</p>
+<p>Byterun was written by Ned Batchelder and myself, building on the work
+of Paul Swartz. Its structure is similar to the primary implementation
+of Python, CPython, so understanding Byterun will help you understand
+interpreters in general and the CPython interpreter in particular. (If
+you don't know which Python you're using, it's probably CPython.)
+Despite its short length, Byterun is capable of running most simple
+Python programs<a class="reference external" href="#fn1">:sup:`1`</a>.</p>
+<p class="rubric" id="a-python-interpreter">A Python Interpreter</p>
+<p>Before we begin, let's narrow down what we mean by &quot;a Python
+interpreter&quot;. The word &quot;interpreter&quot; can be used in a variety of
+different ways when discussing Python. Sometimes interpreter refers to
+the Python REPL, the interactive prompt you get by typing <code class="docutils literal"><span class="pre">python</span></code> at
+the command line. Sometimes people use &quot;the Python interpreter&quot; more or
+less interchangeably with &quot;Python&quot; to talk about executing Python code
+from start to finish. In this chapter, &quot;interpreter&quot; has a more narrow
+meaning: it's the last step in the process of executing a Python
+program.</p>
+<p>Before the interpreter takes over, Python performs three other steps:
+lexing, parsing, and compiling. Together, these steps transform the
+programmer's source code from lines of text into structured <em>code
+objects</em> containing instructions that the interpreter can understand.
+The interpreter's job is to take these code objects and follow the
+instructions.</p>
+<p>You may be surprised to hear that compiling is a step in executing
+Python code at all. Python is often called an &quot;interpreted&quot; language
+like Ruby or Perl, as opposed to a &quot;compiled&quot; language like C or Rust.
+However, this terminology isn't as precise as it may seem. Most
+interpreted languages, including Python, do involve a compilation step.
+The reason Python is called &quot;interpreted&quot; is that the compilation step
+does relatively less work (and the interpreter does relatively more)
+than in a compiled language. As we'll see later in the chapter, the
+Python compiler has much less information about the behavior of a
+program than a C compiler does.</p>
+<p class="rubric" id="a-python-python-interpreter">A Python Python Interpreter</p>
+<p>Byterun is a Python interpreter written in Python. This may strike you
+as odd, but it's no more odd than writing a C compiler in C. (Indeed,
+the widely used C compiler gcc is written in C.) You could write a
+Python interpreter in almost any language.</p>
+<p>Writing a Python interpreter in Python has both advantages and
+disadvantages. The biggest disadvantage is speed: executing code via
+Byterun is much slower than executing it in CPython, where the
+interpreter is written in C and carefully optimized. However, Byterun
+was designed originally as a learning exercise, so speed is not
+important to us. The biggest advantage to using Python is that we can
+more easily implement <em>just</em> the interpreter, and not the rest of the
+Python run-time, particularly the object system. For example, Byterun
+can fall back to &quot;real&quot; Python when it needs to create a class. Another
+advantage is that Byterun is easy to understand, partly because it's
+written in a high-level language (Python!) that many people find easy to
+read. (We also exclude interpreter optimizations in Byterun—once again
+favoring clarity and simplicity over speed.)</p>
+<p class="rubric" id="building-an-interpreter">Building an Interpreter</p>
+<p>Before we start to look at the code of Byterun, we need some
+higher-level context on the structure of the interpreter. How does the
+Python interpreter work?</p>
+<p>The Python interpreter is a <em>virtual machine</em>, meaning that it is
+software that emulates a physical computer. This particular virtual
+machine is a stack machine: it manipulates several stacks to perform its
+operations (as contrasted with a register machine, which writes to and
+reads from particular memory locations).</p>
+<p>The Python interpreter is a <em>bytecode interpreter</em>: its input is
+instruction sets called <em>bytecode</em>. When you write Python, the lexer,
+parser, and compiler generate code objects for the interpreter to
+operate on. Each code object contains a set of instructions to be
+executed—that's the bytecode—plus other information that the interpreter
+will need. Bytecode is an <em>intermediate representation</em> of Python code:
+it expresses the source code that you wrote in a way the interpreter can
+understand. It's analogous to the way that assembly language serves as
+an intermediate representation between C code and a piece of hardware.</p>
+<p class="rubric" id="a-tiny-interpreter">A Tiny Interpreter</p>
+<p>To make this concrete, let's start with a very minimal interpreter. This
+interpreter can only add numbers, and it understands just three
+instructions. All code it can execute consists of these three
+instructions in different combinations. The three instructions are
+these:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">LOAD_VALUE</span></code></li>
+<li><code class="docutils literal"><span class="pre">ADD_TWO_VALUES</span></code></li>
+<li><code class="docutils literal"><span class="pre">PRINT_ANSWER</span></code></li>
+</ul>
+<p>Since we're not concerned with the lexer, parser, and compiler in this
+chapter, it doesn't matter how the instruction sets are produced. You
+can imagine writing <code class="docutils literal"><span class="pre">7</span> <span class="pre">+</span> <span class="pre">5</span></code> and having a compiler emit a combination
+of these three instructions. Or, if you have the right compiler, you can
+write Lisp syntax that's turned into the same combination of
+instructions. The interpreter doesn't care. All that matters is that our
+interpreter is given a well-formed arrangement of the instructions.</p>
+<p>Suppose that</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="mi">7</span> <span class="o">+</span> <span class="mi">5</span>
+</pre></div>
+</div>
+<p>produces this instruction set:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">what_to_execute</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;instructions&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>  <span class="c1"># the first number</span>
+                     <span class="p">(</span><span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># the second number</span>
+                     <span class="p">(</span><span class="s2">&quot;ADD_TWO_VALUES&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">&quot;PRINT_ANSWER&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)],</span>
+    <span class="s2">&quot;numbers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>The Python interpreter is a <em>stack machine</em>, so it must manipulate
+stacks to add two numbers (<a class="reference external" href="#figure-12.1">Figure 12.1</a>.) The interpreter will begin
+by executing the first instruction, <code class="docutils literal"><span class="pre">LOAD_VALUE</span></code>, and pushing the
+first number onto the stack. Next it will push the second number onto
+the stack. For the third instruction, <code class="docutils literal"><span class="pre">ADD_TWO_VALUES</span></code>, it will pop
+both numbers off, add them together, and push the result onto the stack.
+Finally, it will pop the answer back off the stack and print it.</p>
+<div class="center figure"><p><img alt="Figure 12.1 - A stack machine" src="chapters/interpreter-images/interpreter-stack.png" /></p>
+</div><p>Figure 12.1 - A stack machine</p>
+<p>The <code class="docutils literal"><span class="pre">LOAD_VALUE</span></code> instruction tells the interpreter to push a number on
+to the stack, but the instruction alone doesn't specify which number.
+Each instruction needs an extra piece of information, telling the
+interpreter where to find the number to load. So our instruction set has
+two pieces: the instructions themselves, plus a list of constants the
+instructions will need. (In Python, what we're calling &quot;instructions&quot; is
+the bytecode, and the &quot;what to execute&quot; object below is the <em>code
+object</em>.)</p>
+<p>Why not just put the numbers directly in the instructions? Imagine if we
+were adding strings together instead of numbers. We wouldn't want to
+have the strings stuffed in with the instructions, since they could be
+arbitrarily large. This design also means we can have just one copy of
+each object that we need, so for example to add <code class="docutils literal"><span class="pre">7</span> <span class="pre">+</span> <span class="pre">7</span></code>, <code class="docutils literal"><span class="pre">&quot;numbers&quot;</span></code>
+could be just <code class="docutils literal"><span class="pre">[7]</span></code>.</p>
+<p>You may be wondering why instructions other than <code class="docutils literal"><span class="pre">ADD_TWO_VALUES</span></code> were
+needed at all. Indeed, for the simple case of adding two numbers, the
+example is a little contrived. However, this instruction is a building
+block for more complex programs. For example, with just the instructions
+we've defined so far, we can already add together three values—or any
+number of values—given the right set of these instructions. The stack
+provides a clean way to keep track of the state of the interpreter, and
+it will support more complexity as we go along.</p>
+<p>Now let's start to write the interpreter itself. The interpreter object
+has a stack, which we'll represent with a list. The object also has a
+method describing how to execute each instruction. For example, for
+<code class="docutils literal"><span class="pre">LOAD_VALUE</span></code>, the interpreter will push the value onto the stack.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Interpreter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">LOAD_VALUE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">number</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">PRINT_ANSWER</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">answer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">answer</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">ADD_TWO_VALUES</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">first_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">second_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">first_num</span> <span class="o">+</span> <span class="n">second_num</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">total</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These three functions implement the three instructions our interpreter
+understands. The interpreter needs one more piece: a way to tie
+everything together and actually execute it. This method, <code class="docutils literal"><span class="pre">run_code</span></code>,
+takes the <code class="docutils literal"><span class="pre">what_to_execute</span></code> dictionary defined above as an argument.
+It loops over each instruction, processes the arguments to that
+instruction if there are any, and then calls the corresponding method on
+the interpreter object.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">run_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+    <span class="n">instructions</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">&quot;instructions&quot;</span><span class="p">]</span>
+    <span class="n">numbers</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">&quot;numbers&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">each_step</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">:</span>
+        <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span> <span class="o">=</span> <span class="n">each_step</span>
+        <span class="k">if</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">:</span>
+            <span class="n">number</span> <span class="o">=</span> <span class="n">numbers</span><span class="p">[</span><span class="n">argument</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">LOAD_VALUE</span><span class="p">(</span><span class="n">number</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;ADD_TWO_VALUES&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ADD_TWO_VALUES</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;PRINT_ANSWER&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">PRINT_ANSWER</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To test it out, we can create an instance of the object and then call
+the <code class="docutils literal"><span class="pre">run_code</span></code> method with the instruction set for adding 7 + 5
+defined above.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">interpreter</span> <span class="o">=</span> <span class="n">Interpreter</span><span class="p">()</span>
+<span class="n">interpreter</span><span class="o">.</span><span class="n">run_code</span><span class="p">(</span><span class="n">what_to_execute</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Sure enough, it prints the answer: 12.</p>
+<p>Although this interpreter is quite limited, this process is almost
+exactly how the real Python interpreter adds numbers. There are a couple
+of things to note even in this small example.</p>
+<p>First of all, some instructions need arguments. In real Python bytecode,
+about half of instructions have arguments. The arguments are packed in
+with the instructions, much like in our example. Notice that the
+arguments to the <em>instructions</em> are different than the arguments to the
+methods that are called.</p>
+<p>Second, notice that the instruction for <code class="docutils literal"><span class="pre">ADD_TWO_VALUES</span></code> did not
+require any arguments. Instead, the values to be added together were
+popped off the interpreter's stack. This is the defining feature of a
+stack-based interpreter.</p>
+<p>Remember that given valid instruction sets, without any changes to our
+interpreter, we can add more than two numbers at a time. Consider the
+instruction set below. What do you expect to happen? If you had a
+friendly compiler, what code could you write to generate this
+instruction set?</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">what_to_execute</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;instructions&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">&quot;ADD_TWO_VALUES&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">&quot;ADD_TWO_VALUES&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                     <span class="p">(</span><span class="s2">&quot;PRINT_ANSWER&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)],</span>
+    <span class="s2">&quot;numbers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>At this point, we can begin to see how this structure is extensible: we
+can add methods on the interpreter object that describe many more
+operations (as long as we have a compiler to hand us well-formed
+instruction sets).</p>
+<p class="rubric" id="variables">Variables</p>
+<p>Next let's add variables to our interpreter. Variables require an
+instruction for storing the value of a variable, <code class="docutils literal"><span class="pre">STORE_NAME</span></code>; an
+instruction for retrieving it, <code class="docutils literal"><span class="pre">LOAD_NAME</span></code>; and a mapping from
+variable names to values. For now, we'll ignore namespaces and scoping,
+so we can store the variable mapping on the interpreter object itself.
+Finally, we'll have to make sure that <code class="docutils literal"><span class="pre">what_to_execute</span></code> has a list of
+the variable names, in addition to its list of constants.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">s</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="gp">... </span>    <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
+<span class="go"># a friendly compiler transforms `s` into:</span>
+<span class="go">    what_to_execute = {</span>
+<span class="go">        &quot;instructions&quot;: [(&quot;LOAD_VALUE&quot;, 0),</span>
+<span class="go">                         (&quot;STORE_NAME&quot;, 0),</span>
+<span class="go">                         (&quot;LOAD_VALUE&quot;, 1),</span>
+<span class="go">                         (&quot;STORE_NAME&quot;, 1),</span>
+<span class="go">                         (&quot;LOAD_NAME&quot;, 0),</span>
+<span class="go">                         (&quot;LOAD_NAME&quot;, 1),</span>
+<span class="go">                         (&quot;ADD_TWO_VALUES&quot;, None),</span>
+<span class="go">                         (&quot;PRINT_ANSWER&quot;, None)],</span>
+<span class="go">        &quot;numbers&quot;: [1, 2],</span>
+<span class="go">        &quot;names&quot;:   [&quot;a&quot;, &quot;b&quot;] }</span>
+</pre></div>
+</div>
+<p>Our new implementation is below. To keep track of what names are bound
+to what values, we'll add an <code class="docutils literal"><span class="pre">environment</span></code> dictionary to the
+<code class="docutils literal"><span class="pre">__init__</span></code> method. We'll also add <code class="docutils literal"><span class="pre">STORE_NAME</span></code> and <code class="docutils literal"><span class="pre">LOAD_NAME</span></code>.
+These methods first look up the variable name in question and then use
+the dictionary to store or retrieve its value.</p>
+<p>The arguments to an instruction can now mean two different things: They
+can either be an index into the &quot;numbers&quot; list, or they can be an index
+into the &quot;names&quot; list. The interpreter knows which it should be by
+checking what instruction it's executing. We'll break out this logic—and
+the mapping of instructions to what their arguments mean—into a separate
+method.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Interpreter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">environment</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">STORE_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="k">def</span> <span class="nf">LOAD_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">parse_argument</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Understand what the argument to each instruction means.&quot;&quot;&quot;</span>
+        <span class="n">numbers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">]</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;LOAD_NAME&quot;</span><span class="p">,</span> <span class="s2">&quot;STORE_NAME&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">instruction</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">:</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">&quot;numbers&quot;</span><span class="p">][</span><span class="n">argument</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">instruction</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">&quot;names&quot;</span><span class="p">][</span><span class="n">argument</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">argument</span>
+
+    <span class="k">def</span> <span class="nf">run_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+        <span class="n">instructions</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">&quot;instructions&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">each_step</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">:</span>
+            <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span> <span class="o">=</span> <span class="n">each_step</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_argument</span><span class="p">(</span><span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;LOAD_VALUE&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">LOAD_VALUE</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;ADD_TWO_VALUES&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ADD_TWO_VALUES</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;PRINT_ANSWER&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PRINT_ANSWER</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;STORE_NAME&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">STORE_NAME</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">instruction</span> <span class="o">==</span> <span class="s2">&quot;LOAD_NAME&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">LOAD_NAME</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Even with just five instructions, the <code class="docutils literal"><span class="pre">run_code</span></code> method is starting to
+get tedious. If we kept this structure, we'd need one branch of the
+<code class="docutils literal"><span class="pre">if</span></code> statement for each instruction. Here, we can make use of Python's
+dynamic method lookup. We'll always define a method called <code class="docutils literal"><span class="pre">FOO</span></code> to
+execute the instruction called <code class="docutils literal"><span class="pre">FOO</span></code>, so we can use Python's
+<code class="docutils literal"><span class="pre">getattr</span></code> function to look up the method on the fly instead of using
+the big <code class="docutils literal"><span class="pre">if</span></code> statement. The <code class="docutils literal"><span class="pre">run_code</span></code> method then looks like this:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">):</span>
+    <span class="n">instructions</span> <span class="o">=</span> <span class="n">what_to_execute</span><span class="p">[</span><span class="s2">&quot;instructions&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">each_step</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">:</span>
+        <span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span> <span class="o">=</span> <span class="n">each_step</span>
+        <span class="n">argument</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_argument</span><span class="p">(</span><span class="n">instruction</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="n">what_to_execute</span><span class="p">)</span>
+        <span class="n">bytecode_method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instruction</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">argument</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bytecode_method</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bytecode_method</span><span class="p">(</span><span class="n">argument</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric" id="real-python-bytecode">Real Python Bytecode</p>
+<p>At this point, we'll abandon our toy instruction sets and switch to real
+Python bytecode. The structure of bytecode is similar to our toy
+interpreter's verbose instruction sets, except that it uses one byte
+instead of a long name to identify each instruction. To understand this
+structure, we'll walk through the bytecode of a short function. Consider
+the example below:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">cond</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">x</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="gp">... </span>    <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="s1">&#39;yes&#39;</span>
+<span class="gp">... </span>    <span class="k">else</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="s1">&#39;no&#39;</span>
+<span class="gp">...</span>
+</pre></div>
+</div>
+<p>Python exposes a boatload of its internals at run time, and we can
+access them right from the REPL. For the function object <code class="docutils literal"><span class="pre">cond</span></code>,
+<code class="docutils literal"><span class="pre">cond.__code__</span></code> is the code object associated it, and
+<code class="docutils literal"><span class="pre">cond.__code__.co_code</span></code> is the bytecode. There's almost never a good
+reason to use these attributes directly when you're writing Python code,
+but they do allow us to get up to all sorts of mischief—and to look at
+the internals in order to understand them.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cond</span><span class="o">.</span><span class="n">__code__</span><span class="o">.</span><span class="n">co_code</span>  <span class="c1"># the bytecode as raw bytes</span>
+<span class="go">b&#39;d\x01\x00}\x00\x00|\x00\x00d\x02\x00k\x00\x00r\x16\x00d\x03\x00Sd\x04\x00Sd\x00</span>
+<span class="go">   \x00S&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">cond</span><span class="o">.</span><span class="n">__code__</span><span class="o">.</span><span class="n">co_code</span><span class="p">)</span>  <span class="c1"># the bytecode as numbers</span>
+<span class="go">[100, 1, 0, 125, 0, 0, 124, 0, 0, 100, 2, 0, 107, 0, 0, 114, 22, 0, 100, 3, 0, 83,</span>
+<span class="go"> 100, 4, 0, 83, 100, 0, 0, 83]</span>
+</pre></div>
+</div>
+<p>When we just print the bytecode, it looks unintelligible—all we can tell
+is that it's a series of bytes. Luckily, there's a powerful tool we can
+use to understand it: the <code class="docutils literal"><span class="pre">dis</span></code> module in the Python standard library.</p>
+<p><code class="docutils literal"><span class="pre">dis</span></code> is a bytecode disassembler. A disassembler takes low-level code
+that is written for machines, like assembly code or bytecode, and prints
+it in a human-readable way. When we run <code class="docutils literal"><span class="pre">dis.dis</span></code>, it outputs an
+explanation of the bytecode it has passed.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">cond</span><span class="p">)</span>
+<span class="go">  2           0 LOAD_CONST               1 (3)</span>
+<span class="go">              3 STORE_FAST               0 (x)</span>
+
+<span class="go">  3           6 LOAD_FAST                0 (x)</span>
+<span class="go">              9 LOAD_CONST               2 (5)</span>
+<span class="go">             12 COMPARE_OP               0 (&lt;)</span>
+<span class="go">             15 POP_JUMP_IF_FALSE       22</span>
+
+<span class="go">  4          18 LOAD_CONST               3 (&#39;yes&#39;)</span>
+<span class="go">             21 RETURN_VALUE</span>
+
+<span class="go">  6     &gt;&gt;   22 LOAD_CONST               4 (&#39;no&#39;)</span>
+<span class="go">             25 RETURN_VALUE</span>
+<span class="go">             26 LOAD_CONST               0 (None)</span>
+<span class="go">             29 RETURN_VALUE</span>
+</pre></div>
+</div>
+<p>What does all this mean? Let's look at the first instruction
+<code class="docutils literal"><span class="pre">LOAD_CONST</span></code> as an example. The number in the first column (<code class="docutils literal"><span class="pre">2</span></code>)
+shows the line number in our Python source code. The second column is an
+index into the bytecode, telling us that the <code class="docutils literal"><span class="pre">LOAD_CONST</span></code> instruction
+appears at position zero. The third column is the instruction itself,
+mapped to its human-readable name. The fourth column, when present, is
+the argument to that instruction. The fifth column, when present, is a
+hint about what the argument means.</p>
+<p>Consider the first few bytes of this bytecode: [100, 1, 0, 125, 0, 0].
+These six bytes represent two instructions with their arguments. We can
+use <code class="docutils literal"><span class="pre">dis.opname</span></code>, a mapping from bytes to intelligible strings, to
+find out what instructions 100 and 125 map to:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dis</span><span class="o">.</span><span class="n">opname</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span>
+<span class="go">&#39;LOAD_CONST&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dis</span><span class="o">.</span><span class="n">opname</span><span class="p">[</span><span class="mi">125</span><span class="p">]</span>
+<span class="go">&#39;STORE_FAST&#39;</span>
+</pre></div>
+</div>
+<p>The second and third bytes—1, 0—are arguments to <code class="docutils literal"><span class="pre">LOAD_CONST</span></code>, while
+the fifth and sixth bytes—0, 0—are arguments to <code class="docutils literal"><span class="pre">STORE_FAST</span></code>. Just
+like in our toy example, <code class="docutils literal"><span class="pre">LOAD_CONST</span></code> needs to know where to find its
+constant to load, and <code class="docutils literal"><span class="pre">STORE_FAST</span></code> needs to find the name to store.
+(Python's <code class="docutils literal"><span class="pre">LOAD_CONST</span></code> is the same as our toy interpreter's
+<code class="docutils literal"><span class="pre">LOAD_VALUE</span></code>, and <code class="docutils literal"><span class="pre">LOAD_FAST</span></code> is the same as <code class="docutils literal"><span class="pre">LOAD_NAME</span></code>.) So
+these six bytes represent the first line of code, <code class="docutils literal"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">3</span></code>. (Why use
+two bytes for each argument? If Python used just one byte to locate
+constants and names instead of two, you could only have 256
+names/constants associated with a single code object. Using two bytes,
+you can have up to 256 squared, or 65,536.)</p>
+<p class="rubric" id="conditionals-and-loops">Conditionals and Loops</p>
+<p>So far, the interpreter has executed code simply by stepping through the
+instructions one by one. This is a problem; often, we want to execute
+certain instructions many times, or skip them under certain conditions.
+To allow us to write loops and if statements in our code, the
+interpreter must be able to jump around in the instruction set. In a
+sense, Python handles loops and conditionals with <code class="docutils literal"><span class="pre">GOTO</span></code> statements in
+the bytecode! Look at the disassembly of the function <code class="docutils literal"><span class="pre">cond</span></code> again:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">cond</span><span class="p">)</span>
+<span class="go">  2           0 LOAD_CONST               1 (3)</span>
+<span class="go">              3 STORE_FAST               0 (x)</span>
+
+<span class="go">  3           6 LOAD_FAST                0 (x)</span>
+<span class="go">              9 LOAD_CONST               2 (5)</span>
+<span class="go">             12 COMPARE_OP               0 (&lt;)</span>
+<span class="go">             15 POP_JUMP_IF_FALSE       22</span>
+
+<span class="go">  4          18 LOAD_CONST               3 (&#39;yes&#39;)</span>
+<span class="go">             21 RETURN_VALUE</span>
+
+<span class="go">  6     &gt;&gt;   22 LOAD_CONST               4 (&#39;no&#39;)</span>
+<span class="go">             25 RETURN_VALUE</span>
+<span class="go">             26 LOAD_CONST               0 (None)</span>
+<span class="go">             29 RETURN_VALUE</span>
+</pre></div>
+</div>
+<p>The conditional <code class="docutils literal"><span class="pre">if</span> <span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">5</span></code> on line 3 of the code is compiled into four
+instructions: <code class="docutils literal"><span class="pre">LOAD_FAST</span></code>, <code class="docutils literal"><span class="pre">LOAD_CONST</span></code>, <code class="docutils literal"><span class="pre">COMPARE_OP</span></code>, and
+<code class="docutils literal"><span class="pre">POP_JUMP_IF_FALSE</span></code>. <code class="docutils literal"><span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">5</span></code> generates code to load <code class="docutils literal"><span class="pre">x</span></code>, load 5,
+and compare the two values. The instruction <code class="docutils literal"><span class="pre">POP_JUMP_IF_FALSE</span></code> is
+responsible for implementing the <code class="docutils literal"><span class="pre">if</span></code>. This instruction will pop the
+top value off the interpreter's stack. If the value is true, then
+nothing happens. (The value can be &quot;truthy&quot;—it doesn't have to be the
+literal <code class="docutils literal"><span class="pre">True</span></code> object.) If the value is false, then the interpreter
+will jump to another instruction.</p>
+<p>The instruction to land on is called the jump target, and it's provided
+as the argument to the <code class="docutils literal"><span class="pre">POP_JUMP</span></code> instruction. Here, the jump target
+is 22. The instruction at index 22 is <code class="docutils literal"><span class="pre">LOAD_CONST</span></code> on line 6. (<code class="docutils literal"><span class="pre">dis</span></code>
+marks jump targets with <code class="docutils literal"><span class="pre">&gt;&gt;</span></code>.) If the result of <code class="docutils literal"><span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">5</span></code> is False,
+then the interpreter will jump straight to line 6 (<code class="docutils literal"><span class="pre">return</span> <span class="pre">&quot;no&quot;</span></code>),
+skipping line 4 (<code class="docutils literal"><span class="pre">return</span> <span class="pre">&quot;yes&quot;</span></code>). Thus, the interpreter uses jump
+instructions to selectively skip over parts of the instruction set.</p>
+<p>Python loops also rely on jumping. In the bytecode below, notice that
+the line <code class="docutils literal"><span class="pre">while</span> <span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">5</span></code> generates almost identical bytecode to
+<code class="docutils literal"><span class="pre">if</span> <span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">10</span></code>. In both cases, the comparison is calculated and then
+<code class="docutils literal"><span class="pre">POP_JUMP_IF_FALSE</span></code> controls which instruction is executed next. At
+the end of line 4—the end of the loop's body—the instruction
+<code class="docutils literal"><span class="pre">JUMP_ABSOLUTE</span></code> always sends the interpreter back to instruction 9 at
+the top of the loop. When x &lt; 5 becomes false, then
+<code class="docutils literal"><span class="pre">POP_JUMP_IF_FALSE</span></code> jumps the interpreter past the end of the loop, to
+instruction 34.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">loop</span><span class="p">():</span>
+<span class="gp">... </span>     <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="gp">... </span>     <span class="k">while</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+<span class="gp">... </span>         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="gp">... </span>     <span class="k">return</span> <span class="n">x</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+<span class="go">  2           0 LOAD_CONST               1 (1)</span>
+<span class="go">              3 STORE_FAST               0 (x)</span>
+
+<span class="go">  3           6 SETUP_LOOP              26 (to 35)</span>
+<span class="go">        &gt;&gt;    9 LOAD_FAST                0 (x)</span>
+<span class="go">             12 LOAD_CONST               2 (5)</span>
+<span class="go">             15 COMPARE_OP               0 (&lt;)</span>
+<span class="go">             18 POP_JUMP_IF_FALSE       34</span>
+
+<span class="go">  4          21 LOAD_FAST                0 (x)</span>
+<span class="go">             24 LOAD_CONST               1 (1)</span>
+<span class="go">             27 BINARY_ADD</span>
+<span class="go">             28 STORE_FAST               0 (x)</span>
+<span class="go">             31 JUMP_ABSOLUTE            9</span>
+<span class="go">        &gt;&gt;   34 POP_BLOCK</span>
+
+<span class="go">  5     &gt;&gt;   35 LOAD_FAST                0 (x)</span>
+<span class="go">             38 RETURN_VALUE</span>
+</pre></div>
+</div>
+<p class="rubric" id="explore-bytecode">Explore Bytecode</p>
+<p>I encourage you to try running <code class="docutils literal"><span class="pre">dis.dis</span></code> on functions you write. Some
+questions to explore:</p>
+<ul class="simple">
+<li>What's the difference between a for loop and a while loop to the
+Python interpreter?</li>
+<li>How can you write different functions that generate identical
+bytecode?</li>
+<li>How does <code class="docutils literal"><span class="pre">elif</span></code> work? What about list comprehensions?</li>
+</ul>
+<p class="rubric" id="frames">Frames</p>
+<p>So far, we've learned that the Python virtual machine is a stack
+machine. It steps and jumps through instructions, pushing and popping
+values on and off a stack. There are still some gaps in our mental
+model, though. In the examples above, the last instruction is
+<code class="docutils literal"><span class="pre">RETURN_VALUE</span></code>, which corresponds to the <code class="docutils literal"><span class="pre">return</span></code> statement in the
+code. But where does the instruction return to?</p>
+<p>To answer this question, we must add a layer of complexity: the frame. A
+frame is a collection of information and context for a chunk of code.
+Frames are created and destroyed on the fly as your Python code
+executes. There's one frame corresponding to each <em>call</em> of a
+function—so while each frame has one code object associated with it, a
+code object can have many frames. If you had a function that called
+itself recursively ten times, you'd have eleven frames—one for each
+level of recursion and one for the module you started from. In general,
+there's a frame for each scope in a Python program. For example, each
+module, each function call, and each class definition has a frame.</p>
+<p>Frames live on the <em>call stack</em>, a completely different stack from the
+one we've been discussing so far. (The call stack is the stack you're
+most familiar with already—you've seen it printed out in the tracebacks
+of exceptions. Each line in a traceback starting with &quot;File
+'program.py', line 10&quot; corresponds to one frame on the call stack.) The
+stack we've been examining—the one the interpreter is manipulating while
+it executes bytecode—we'll call the <em>data stack</em>. There's also a third
+stack, called the <em>block stack</em>. Blocks are used for certain kinds of
+control flow, particularly looping and exception handling. Each frame on
+the call stack has its own data stack and block stack.</p>
+<p>Let's make this concrete with an example. Suppose the Python interpreter
+is currently executing the line marked 3 below. The interpreter is in
+the middle of a call to <code class="docutils literal"><span class="pre">foo</span></code>, which is in turn calling <code class="docutils literal"><span class="pre">bar</span></code>. The
+diagram shows a schematic of the call stack of frames, the block stacks,
+and the data stacks. (This code is written like a REPL session, so we've
+first defined the needed functions.) At the moment we're interested in,
+the interpreter is executing <code class="docutils literal"><span class="pre">foo()</span></code>, at the bottom, which then
+reaches in to the body of <code class="docutils literal"><span class="pre">foo</span></code> and then up into <code class="docutils literal"><span class="pre">bar</span></code>.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">bar</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">z</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="mi">3</span>     <span class="c1"># &lt;--- (3) ... and the interpreter is here.</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">z</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="gp">... </span>    <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">bar</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="c1"># &lt;--- (2) ... which is returning a call to bar ...</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">foo</span><span class="p">()</span>             <span class="c1"># &lt;--- (1) We&#39;re in the middle of a call to foo ...</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+<div class="center figure"><p><img alt="Figure 12.2 - The call stack" src="chapters/interpreter-images/interpreter-callstack.png" /></p>
+</div><p>Figure 12.2 - The call stack</p>
+<p>At this point, the interpreter is in the middle of the function call to
+<code class="docutils literal"><span class="pre">bar</span></code>. There are three frames on the call stack: one for the module
+level, one for the function <code class="docutils literal"><span class="pre">foo</span></code>, and one for <code class="docutils literal"><span class="pre">bar</span></code> (<a class="reference external" href="#figure-12.2">Figure
+12.2</a>.) Once <code class="docutils literal"><span class="pre">bar</span></code> returns, the frame associated with it is popped
+off the call stack and discarded.</p>
+<p>The bytecode instruction <code class="docutils literal"><span class="pre">RETURN_VALUE</span></code> tells the interpreter to pass
+a value between frames. First it will pop the top value off the data
+stack of the top frame on the call stack. Then it pops the entire frame
+off the call stack and throws it away. Finally, the value is pushed onto
+the data stack on the next frame down.</p>
+<p>When Ned Batchelder and I were working on Byterun, for a long time we
+had a significant error in our implementation. Instead of having one
+data stack on each frame, we had just one data stack on the entire
+virtual machine. We had dozens of tests made up of little snippets of
+Python code which we ran through Byterun and through the real Python
+interpreter to make sure the same thing happened in both interpreters.
+Nearly all of these tests were passing. The only thing we couldn't get
+working was generators. Finally, reading the CPython code more
+carefully, we realized the mistake<a class="reference external" href="#fn2">:sup:`2`</a>. Moving a data stack
+onto each frame fixed the problem.</p>
+<p>Looking back on this bug, I was amazed at how little of Python relied on
+each frame having a different data stack. Nearly all operations in the
+Python interpreter carefully clean up the data stack, so the fact that
+the frames were sharing the same stack didn't matter. In the example
+above, when <code class="docutils literal"><span class="pre">bar</span></code> finishes executing, it'll leave its data stack
+empty. Even if <code class="docutils literal"><span class="pre">foo</span></code> shared the same stack, the values would be lower
+down. However, with generators, a key feature is the ability to pause a
+frame, return to some other frame, and then return to the generator
+frame later and have it be in exactly the same state that you left it.</p>
+<p class="rubric" id="byterun">Byterun</p>
+<p>We now have enough context about the Python interpreter to begin
+examining Byterun.</p>
+<p>There are four kinds of objects in Byterun:</p>
+<ul class="simple">
+<li>A <code class="docutils literal"><span class="pre">VirtualMachine</span></code> class, which manages the highest-level
+structure, particularly the call stack of frames, and contains a
+mapping of instructions to operations. This is a more complex version
+of the <code class="docutils literal"><span class="pre">Intepreter</span></code> object above.</li>
+<li>A <code class="docutils literal"><span class="pre">Frame</span></code> class. Every <code class="docutils literal"><span class="pre">Frame</span></code> instance has one code object and
+manages a few other necessary bits of state, particularly the global
+and local namespaces, a reference to the calling frame, and the last
+bytecode instruction executed.</li>
+<li>A <code class="docutils literal"><span class="pre">Function</span></code> class, which will be used in place of real Python
+functions. Recall that calling a function creates a new frame in the
+interpreter. We implement Function so that we control the creation of
+new Frames.</li>
+<li>A <code class="docutils literal"><span class="pre">Block</span></code> class, which just wraps the three attributes of blocks.
+(The details of blocks aren't central to the Python interpreter, so
+we won't spend much time on them, but they're included here so that
+Byterun can run real Python code.)</li>
+</ul>
+<p class="rubric" id="the-virtualmachine-class">The <code class="docutils literal"><span class="pre">VirtualMachine</span></code> Class</p>
+<p>Only one instance of <code class="docutils literal"><span class="pre">VirtualMachine</span></code> will be created each time the
+program is run, because we only have one Python interpreter.
+<code class="docutils literal"><span class="pre">VirtualMachine</span></code> stores the call stack, the exception state, and
+return values while they're being passed between frames. The entry point
+for executing code is the method <code class="docutils literal"><span class="pre">run_code</span></code>, which takes a compiled
+code object as an argument. It starts by setting up and running a frame.
+This frame may create other frames; the call stack will grow and shrink
+as the program executes. When the first frame eventually returns,
+execution is finished.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">VirtualMachineError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span> <span class="o">=</span> <span class="p">[]</span>   <span class="c1"># The call stack of frames.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># The current frame.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">run_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">global_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">local_names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; An entry point to execute code using the virtual machine.&quot;&quot;&quot;</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_frame</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">global_names</span><span class="o">=</span><span class="n">global_names</span><span class="p">,</span>
+                                <span class="n">local_names</span><span class="o">=</span><span class="n">local_names</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric" id="the-frame-class">The <code class="docutils literal"><span class="pre">Frame</span></code> Class</p>
+<p>Next we'll write the <code class="docutils literal"><span class="pre">Frame</span></code> object. The frame is a collection of
+attributes with no methods. As mentioned above, the attributes include
+the code object created by the compiler; the local, global, and builtin
+namespaces; a reference to the previous frame; a data stack; a block
+stack; and the last instruction executed. (We have to do a little extra
+work to get to the builtin namespace because Python treats this
+namespace differently in different modules; this detail is not important
+to the virtual machine.)</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Frame</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code_obj</span><span class="p">,</span> <span class="n">global_names</span><span class="p">,</span> <span class="n">local_names</span><span class="p">,</span> <span class="n">prev_frame</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">code_obj</span> <span class="o">=</span> <span class="n">code_obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_names</span> <span class="o">=</span> <span class="n">global_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">local_names</span> <span class="o">=</span> <span class="n">local_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_frame</span> <span class="o">=</span> <span class="n">prev_frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">prev_frame</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span> <span class="o">=</span> <span class="n">prev_frame</span><span class="o">.</span><span class="n">builtin_names</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span> <span class="o">=</span> <span class="n">local_names</span><span class="p">[</span><span class="s1">&#39;__builtins__&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">builtin_names</span><span class="o">.</span><span class="n">__dict__</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">block_stack</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
+<p>Next, we'll add frame manipulation to the virtual machine. There are
+three helper functions for frames: one to create new frames (which is
+responsible for sorting out the namespaces for the new frame) and one
+each to push and pop frames on and off the frame stack. A fourth
+function, <code class="docutils literal"><span class="pre">run_frame</span></code>, does the main work of executing a frame. We'll
+come back to this soon.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># Frame manipulation</span>
+    <span class="k">def</span> <span class="nf">make_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">callargs</span><span class="o">=</span><span class="p">{},</span> <span class="n">global_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">local_names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">global_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">local_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">local_names</span> <span class="o">=</span> <span class="n">global_names</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">:</span>
+            <span class="n">global_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">global_names</span>
+            <span class="n">local_names</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">global_names</span> <span class="o">=</span> <span class="n">local_names</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;__builtins__&#39;</span><span class="p">:</span> <span class="n">__builtins__</span><span class="p">,</span>
+                <span class="s1">&#39;__name__&#39;</span><span class="p">:</span> <span class="s1">&#39;__main__&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;__doc__&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;__package__&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="n">local_names</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">callargs</span><span class="p">)</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">Frame</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">global_names</span><span class="p">,</span> <span class="n">local_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">frame</span>
+
+    <span class="k">def</span> <span class="nf">push_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span>
+
+    <span class="k">def</span> <span class="nf">pop_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">run_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+        <span class="c1"># we&#39;ll come back to this shortly</span>
+</pre></div>
+</div>
+<p class="rubric" id="the-function-class">The <code class="docutils literal"><span class="pre">Function</span></code> Class</p>
+<p>The implementation of the <code class="docutils literal"><span class="pre">Function</span></code> object is somewhat twisty, and
+most of the details aren't critical to understanding the interpreter.
+The important thing to notice is that calling a function—invoking the
+<code class="docutils literal"><span class="pre">__call__</span></code> method—creates a new <code class="docutils literal"><span class="pre">Frame</span></code> object and starts running
+it.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Function</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a realistic function object, defining the things the interpreter expects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;func_code&#39;</span><span class="p">,</span> <span class="s1">&#39;func_name&#39;</span><span class="p">,</span> <span class="s1">&#39;func_defaults&#39;</span><span class="p">,</span> <span class="s1">&#39;func_globals&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;func_locals&#39;</span><span class="p">,</span> <span class="s1">&#39;func_dict&#39;</span><span class="p">,</span> <span class="s1">&#39;func_closure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;__name__&#39;</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">,</span> <span class="s1">&#39;__doc__&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_vm&#39;</span><span class="p">,</span> <span class="s1">&#39;_func&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">globs</span><span class="p">,</span> <span class="n">defaults</span><span class="p">,</span> <span class="n">closure</span><span class="p">,</span> <span class="n">vm</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;You don&#39;t need to follow this closely to understand the interpreter.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span> <span class="o">=</span> <span class="n">vm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_code</span> <span class="o">=</span> <span class="n">code</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">code</span><span class="o">.</span><span class="n">co_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_defaults</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">defaults</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_globals</span> <span class="o">=</span> <span class="n">globs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_locals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func_closure</span> <span class="o">=</span> <span class="n">closure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">code</span><span class="o">.</span><span class="n">co_consts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">code</span><span class="o">.</span><span class="n">co_consts</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="c1"># Sometimes, we need a real Python function.  This is for that.</span>
+        <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;argdefs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_defaults</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">closure</span><span class="p">:</span>
+            <span class="n">kw</span><span class="p">[</span><span class="s1">&#39;closure&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">make_cell</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">closure</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">globs</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;When calling a Function, make a new frame and run it.&quot;&quot;&quot;</span>
+        <span class="n">callargs</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getcallargs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># Use callargs to provide a mapping of arguments: values to pass into the new</span>
+        <span class="c1"># frame.</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span><span class="o">.</span><span class="n">make_frame</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">func_code</span><span class="p">,</span> <span class="n">callargs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_globals</span><span class="p">,</span> <span class="p">{}</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vm</span><span class="o">.</span><span class="n">run_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">make_cell</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a real Python closure and grab a cell.&quot;&quot;&quot;</span>
+    <span class="c1"># Thanks to Alex Gaynor for help with this bit of twistiness.</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">x</span><span class="p">)(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fn</span><span class="o">.</span><span class="n">__closure__</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Next, back on the <code class="docutils literal"><span class="pre">VirtualMachine</span></code> object, we'll add some helper
+methods for data stack manipulation. The bytecodes that manipulate the
+stack always operate on the current frame's data stack. This will make
+our implementations of <code class="docutils literal"><span class="pre">POP_TOP</span></code>, <code class="docutils literal"><span class="pre">LOAD_FAST</span></code>, and all the other
+instructions that touch the stack more readable.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># Data stack manipulation</span>
+    <span class="k">def</span> <span class="nf">top</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">push</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">vals</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">popn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Pop a number of values from the value stack.</span>
+<span class="sd">        A list of `n` values is returned, the deepest value first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="n">n</span><span class="p">:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="n">n</span><span class="p">:]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">return</span> <span class="n">ret</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+</pre></div>
+</div>
+<p>Before we get to running a frame, we need two more methods.</p>
+<p>The first, <code class="docutils literal"><span class="pre">parse_byte_and_args</span></code>, takes a bytecode, checks if it has
+arguments, and parses the arguments if so. This method also updates the
+frame's attribute <code class="docutils literal"><span class="pre">last_instruction</span></code>, a reference to the last
+instruction executed. A single instruction is one byte long if it
+doesn't have an argument, and three bytes if it does have an argument;
+the last two bytes are the argument. The meaning of the argument to each
+instruction depends on which instruction it is. For example, as
+mentioned above, for <code class="docutils literal"><span class="pre">POP_JUMP_IF_FALSE</span></code>, the argument to the
+instruction is the jump target. For <code class="docutils literal"><span class="pre">BUILD_LIST</span></code>, it is the number of
+elements in the list. For <code class="docutils literal"><span class="pre">LOAD_CONST</span></code>, it's an index into the list of
+constants.</p>
+<p>Some instructions use simple numbers as their arguments. For others, the
+virtual machine has to do a little work to discover what the arguments
+mean. The <code class="docutils literal"><span class="pre">dis</span></code> module in the standard library exposes a cheatsheet
+explaining what arguments have what meaning, which makes our code more
+compact. For example, the list <code class="docutils literal"><span class="pre">dis.hasname</span></code> tells us that the
+arguments to <code class="docutils literal"><span class="pre">LOAD_NAME</span></code>, <code class="docutils literal"><span class="pre">IMPORT_NAME</span></code>, <code class="docutils literal"><span class="pre">LOAD_GLOBAL</span></code>, and nine
+other instructions have the same meaning: for these instructions, the
+argument represents an index into the list of names on the code object.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">parse_byte_and_args</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">opoffset</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span>
+        <span class="n">byteCode</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_code</span><span class="p">[</span><span class="n">opoffset</span><span class="p">]</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">byte_name</span> <span class="o">=</span> <span class="n">dis</span><span class="o">.</span><span class="n">opname</span><span class="p">[</span><span class="n">byteCode</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">byteCode</span> <span class="o">&gt;=</span> <span class="n">dis</span><span class="o">.</span><span class="n">HAVE_ARGUMENT</span><span class="p">:</span>
+            <span class="c1"># index into the bytecode</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_code</span><span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span><span class="p">:</span><span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">+=</span> <span class="mi">2</span>   <span class="c1"># advance the instruction pointer</span>
+            <span class="n">arg_val</span> <span class="o">=</span> <span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mi">256</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">hasconst</span><span class="p">:</span>   <span class="c1"># Look up a constant</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_consts</span><span class="p">[</span><span class="n">arg_val</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">hasname</span><span class="p">:</span>  <span class="c1"># Look up a name</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_names</span><span class="p">[</span><span class="n">arg_val</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">haslocal</span><span class="p">:</span> <span class="c1"># Look up a local name</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">code_obj</span><span class="o">.</span><span class="n">co_varnames</span><span class="p">[</span><span class="n">arg_val</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">byteCode</span> <span class="ow">in</span> <span class="n">dis</span><span class="o">.</span><span class="n">hasjrel</span><span class="p">:</span>  <span class="c1"># Calculate a relative jump</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">last_instruction</span> <span class="o">+</span> <span class="n">arg_val</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">arg</span> <span class="o">=</span> <span class="n">arg_val</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">argument</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="n">byte_name</span><span class="p">,</span> <span class="n">argument</span>
+</pre></div>
+</div>
+<p>The next method is <code class="docutils literal"><span class="pre">dispatch</span></code>, which looks up the operations for a
+given instruction and executes them. In the CPython interpreter, this
+dispatch is done with a giant switch statement that spans 1,500 lines!
+Luckily, since we're writing Python, we can be more compact. We'll
+define a method for each byte name and then use <code class="docutils literal"><span class="pre">getattr</span></code> to look it
+up. Like in the toy interpreter above, if our instruction is named
+<code class="docutils literal"><span class="pre">FOO_BAR</span></code>, the corresponding method would be named <code class="docutils literal"><span class="pre">byte_FOO_BAR</span></code>.
+For the moment, we'll leave the content of these methods as a black box.
+Each bytecode method will return either <code class="docutils literal"><span class="pre">None</span></code> or a string, called
+<code class="docutils literal"><span class="pre">why</span></code>, which is an extra piece of state the interpreter needs in some
+cases. These return values of the individual instruction methods are
+used only as internal indicators of interpreter state—don't confuse
+these with return values from executing frames.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">byte_name</span><span class="p">,</span> <span class="n">argument</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Dispatch by bytename to the corresponding methods.</span>
+<span class="sd">        Exceptions are caught and set on the virtual machine.&quot;&quot;&quot;</span>
+
+        <span class="c1"># When later unwinding the block stack,</span>
+        <span class="c1"># we need to keep track of why we are doing it.</span>
+        <span class="n">why</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">bytecode_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;byte_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">byte_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bytecode_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">byte_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;UNARY_&#39;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">unaryOperator</span><span class="p">(</span><span class="n">byte_name</span><span class="p">[</span><span class="mi">6</span><span class="p">:])</span>
+                <span class="k">elif</span> <span class="n">byte_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;BINARY_&#39;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">binaryOperator</span><span class="p">(</span><span class="n">byte_name</span><span class="p">[</span><span class="mi">7</span><span class="p">:])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">VirtualMachineError</span><span class="p">(</span>
+                        <span class="s2">&quot;unsupported bytecode type: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">byte_name</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">why</span> <span class="o">=</span> <span class="n">bytecode_fn</span><span class="p">(</span><span class="o">*</span><span class="n">argument</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="c1"># deal with exceptions encountered while executing the op.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="kc">None</span><span class="p">,)</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="s1">&#39;exception&#39;</span>
+
+        <span class="k">return</span> <span class="n">why</span>
+
+    <span class="k">def</span> <span class="nf">run_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Run a frame until it returns (somehow).</span>
+<span class="sd">        Exceptions are raised, the return value is returned.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">byte_name</span><span class="p">,</span> <span class="n">arguments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_byte_and_args</span><span class="p">()</span>
+
+            <span class="n">why</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatch</span><span class="p">(</span><span class="n">byte_name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">)</span>
+
+            <span class="c1"># Deal with any block management we need to do</span>
+            <span class="k">while</span> <span class="n">why</span> <span class="ow">and</span> <span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="p">:</span>
+                <span class="n">why</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manage_block_stack</span><span class="p">(</span><span class="n">why</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">why</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop_frame</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">&#39;exception&#39;</span><span class="p">:</span>
+            <span class="n">exc</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">tb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">exc</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+            <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span> <span class="o">=</span> <span class="n">tb</span>
+            <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_value</span>
+</pre></div>
+</div>
+<p class="rubric" id="the-block-class">The <code class="docutils literal"><span class="pre">Block</span></code> Class</p>
+<p>Before we implement the methods for each bytecode instruction, we'll
+briefly discuss blocks. A block is used for certain kinds of flow
+control, specifically exception handling and looping. The block is
+reponsible for making sure that the data stack is in the appropriate
+state when the operation is finished. For example, in a loop, a special
+iterator object remains on the stack while the loop is running, but is
+popped off when it is finished. The interpreter must keep track of
+whether the loop is continuing or is finished.</p>
+<p>To keep track of this extra piece of information, the interpreter sets a
+flag to indicate its state. We implement this flag as a variable called
+<code class="docutils literal"><span class="pre">why</span></code>, which can be <code class="docutils literal"><span class="pre">None</span></code> or one of the strings <code class="docutils literal"><span class="pre">&quot;continue&quot;</span></code>,
+<code class="docutils literal"><span class="pre">&quot;break&quot;</span></code>, <code class="docutils literal"><span class="pre">&quot;exception&quot;</span></code>, or <code class="docutils literal"><span class="pre">&quot;return&quot;</span></code>. This indicates what kind
+of manipulation of the block stack and data stack should happen. To
+return to the iterator example, if the top of the block stack is a
+<code class="docutils literal"><span class="pre">loop</span></code> block and the <code class="docutils literal"><span class="pre">why</span></code> code is <code class="docutils literal"><span class="pre">continue</span></code>, the iterator object
+should remain on the data stack, but if the <code class="docutils literal"><span class="pre">why</span></code> code is <code class="docutils literal"><span class="pre">break</span></code>,
+it should be popped off.</p>
+<p>The precise details of block manipulation are rather fiddly, and we
+won't spend more time on this, but interested readers are encouraged to
+take a careful look.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">Block</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;Block&quot;</span><span class="p">,</span> <span class="s2">&quot;type, handler, stack_height&quot;</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># Block stack manipulation</span>
+    <span class="k">def</span> <span class="nf">push_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b_type</span><span class="p">,</span> <span class="n">handler</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">stack_height</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Block</span><span class="p">(</span><span class="n">b_type</span><span class="p">,</span> <span class="n">handler</span><span class="p">,</span> <span class="n">stack_height</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">pop_block</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">unwind_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">block</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Unwind the values on the data stack corresponding to a given block.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;except-handler&#39;</span><span class="p">:</span>
+            <span class="c1"># The exception itself is on the stack as type, value, and traceback.</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">block</span><span class="o">.</span><span class="n">level</span> <span class="o">+</span> <span class="n">offset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;except-handler&#39;</span><span class="p">:</span>
+            <span class="n">traceback</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">exctype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span> <span class="o">=</span> <span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span>
+
+    <span class="k">def</span> <span class="nf">manage_block_stack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">why</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; &quot;&quot;&quot;</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">block_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;loop&#39;</span> <span class="ow">and</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">&#39;continue&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">return_value</span><span class="p">)</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">why</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop_block</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unwind_block</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;loop&#39;</span> <span class="ow">and</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">&#39;break&#39;</span><span class="p">:</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">why</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;setup-except&#39;</span><span class="p">,</span> <span class="s1">&#39;finally&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">why</span> <span class="o">==</span> <span class="s1">&#39;exception&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push_block</span><span class="p">(</span><span class="s1">&#39;except-handler&#39;</span><span class="p">)</span>
+            <span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">tb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_exception</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">tb</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">exctype</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">tb</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">exctype</span><span class="p">)</span> <span class="c1"># yes, twice</span>
+            <span class="n">why</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">why</span>
+
+        <span class="k">elif</span> <span class="n">block</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;finally&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">why</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;return&#39;</span><span class="p">,</span> <span class="s1">&#39;continue&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">return_value</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">why</span><span class="p">)</span>
+
+            <span class="n">why</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">handler</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">why</span>
+        <span class="k">return</span> <span class="n">why</span>
+</pre></div>
+</div>
+<p class="rubric" id="the-instructions">The Instructions</p>
+<p>All that's left is to implement the dozens of methods for instructions.
+The actual instructions are the least interesting part of the
+interpreter, so we show only a handful here, but the full implementation
+is <a class="reference external" href="https://github.com/nedbat/byterun">available on GitHub</a>. (Enough instructions are included here to
+execute all the code samples that we disassembled above.)</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">VirtualMachine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="p">[</span><span class="o">...</span> <span class="n">snip</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1">## Stack manipulation</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_CONST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">const</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">const</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_TOP</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="c1">## Names</span>
+    <span class="k">def</span> <span class="nf">byte_LOAD_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">&quot;name &#39;</span><span class="si">%s</span><span class="s2">&#39; is not defined&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_NAME</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_FAST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">UnboundLocalError</span><span class="p">(</span>
+                <span class="s2">&quot;local variable &#39;</span><span class="si">%s</span><span class="s2">&#39; referenced before assignment&quot;</span> <span class="o">%</span> <span class="n">name</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_FAST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_GLOBAL</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">f_globals</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">f_globals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">f_builtins</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s2">&quot;global name &#39;</span><span class="si">%s</span><span class="s2">&#39; is not defined&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="c1">## Operators</span>
+
+    <span class="n">BINARY_OPERATORS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;POWER&#39;</span><span class="p">:</span>    <span class="nb">pow</span><span class="p">,</span>
+        <span class="s1">&#39;MULTIPLY&#39;</span><span class="p">:</span> <span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span>
+        <span class="s1">&#39;FLOOR_DIVIDE&#39;</span><span class="p">:</span> <span class="n">operator</span><span class="o">.</span><span class="n">floordiv</span><span class="p">,</span>
+        <span class="s1">&#39;TRUE_DIVIDE&#39;</span><span class="p">:</span>  <span class="n">operator</span><span class="o">.</span><span class="n">truediv</span><span class="p">,</span>
+        <span class="s1">&#39;MODULO&#39;</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">mod</span><span class="p">,</span>
+        <span class="s1">&#39;ADD&#39;</span><span class="p">:</span>      <span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span>
+        <span class="s1">&#39;SUBTRACT&#39;</span><span class="p">:</span> <span class="n">operator</span><span class="o">.</span><span class="n">sub</span><span class="p">,</span>
+        <span class="s1">&#39;SUBSCR&#39;</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">getitem</span><span class="p">,</span>
+        <span class="s1">&#39;LSHIFT&#39;</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">lshift</span><span class="p">,</span>
+        <span class="s1">&#39;RSHIFT&#39;</span><span class="p">:</span>   <span class="n">operator</span><span class="o">.</span><span class="n">rshift</span><span class="p">,</span>
+        <span class="s1">&#39;AND&#39;</span><span class="p">:</span>      <span class="n">operator</span><span class="o">.</span><span class="n">and_</span><span class="p">,</span>
+        <span class="s1">&#39;XOR&#39;</span><span class="p">:</span>      <span class="n">operator</span><span class="o">.</span><span class="n">xor</span><span class="p">,</span>
+        <span class="s1">&#39;OR&#39;</span><span class="p">:</span>       <span class="n">operator</span><span class="o">.</span><span class="n">or_</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">binaryOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BINARY_OPERATORS</span><span class="p">[</span><span class="n">op</span><span class="p">](</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+    <span class="n">COMPARE_OPERATORS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">lt</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">le</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">eq</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">ne</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">gt</span><span class="p">,</span>
+        <span class="n">operator</span><span class="o">.</span><span class="n">ge</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">is</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">y</span><span class="p">,</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">byte_COMPARE_OP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opnum</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">COMPARE_OPERATORS</span><span class="p">[</span><span class="n">opnum</span><span class="p">](</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+    <span class="c1">## Attributes and indexing</span>
+
+    <span class="k">def</span> <span class="nf">byte_LOAD_ATTR</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_ATTR</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">val</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="c1">## Building</span>
+
+    <span class="k">def</span> <span class="nf">byte_BUILD_LIST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+        <span class="n">elts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">elts</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_BUILD_MAP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">({})</span>
+
+    <span class="k">def</span> <span class="nf">byte_STORE_MAP</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">the_map</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">the_map</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">the_map</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_LIST_APPEND</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">the_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="n">count</span><span class="p">]</span> <span class="c1"># peek</span>
+        <span class="n">the_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="c1">## Jumps</span>
+
+    <span class="k">def</span> <span class="nf">byte_JUMP_FORWARD</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_JUMP_ABSOLUTE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_JUMP_IF_TRUE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_JUMP_IF_FALSE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">val</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="c1">## Blocks</span>
+
+    <span class="k">def</span> <span class="nf">byte_SETUP_LOOP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dest</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push_block</span><span class="p">(</span><span class="s1">&#39;loop&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_GET_ITER</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()))</span>
+
+    <span class="k">def</span> <span class="nf">byte_FOR_ITER</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jump</span><span class="p">):</span>
+        <span class="n">iterobj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iterobj</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jump</span><span class="p">(</span><span class="n">jump</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_BREAK_LOOP</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;break&#39;</span>
+
+    <span class="k">def</span> <span class="nf">byte_POP_BLOCK</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pop_block</span><span class="p">()</span>
+
+    <span class="c1">## Functions</span>
+
+    <span class="k">def</span> <span class="nf">byte_MAKE_FUNCTION</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">argc</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">defaults</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="n">argc</span><span class="p">)</span>
+        <span class="n">globs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">globs</span><span class="p">,</span> <span class="n">defaults</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_CALL_FUNCTION</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="n">lenKw</span><span class="p">,</span> <span class="n">lenPos</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span> <span class="c1"># KWargs not supported here</span>
+        <span class="n">posargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">popn</span><span class="p">(</span><span class="n">lenPos</span><span class="p">)</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">posargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">retval</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">byte_RETURN_VALUE</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;return&quot;</span>
+</pre></div>
+</div>
+<p class="rubric" id="dynamic-typing-what-the-compiler-doesnt-know">Dynamic Typing: What the Compiler Doesn't Know</p>
+<p>One thing you've probably heard is that Python is a &quot;dynamic&quot;
+language—particularly that it's &quot;dynamically typed&quot;. The work we've done
+to this point sheds some light on this description.</p>
+<p>One of the things &quot;dynamic&quot; means in this context is that a lot of work
+is done at run time. We saw earlier that the Python compiler doesn't
+have much information about what the code actually does. For example,
+consider the short function <code class="docutils literal"><span class="pre">mod</span></code> below. <code class="docutils literal"><span class="pre">mod</span></code> takes two arguments
+and returns the first modulo the second. In the bytecode, we see that
+the variables <code class="docutils literal"><span class="pre">a</span></code> and <code class="docutils literal"><span class="pre">b</span></code> are loaded, then the bytecode
+<code class="docutils literal"><span class="pre">BINARY_MODULO</span></code> performs the modulo operation itself.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">mod</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+<span class="gp">... </span>   <span class="k">return</span> <span class="n">a</span> <span class="o">%</span> <span class="n">b</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dis</span><span class="o">.</span><span class="n">dis</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+<span class="go">  2           0 LOAD_FAST                0 (a)</span>
+<span class="go">              3 LOAD_FAST                1 (b)</span>
+<span class="go">              6 BINARY_MODULO</span>
+<span class="go">              7 RETURN_VALUE</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mod</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="go">4</span>
+</pre></div>
+</div>
+<p>Calculating 19 <code class="docutils literal"><span class="pre">%</span></code> 5 yields 4—no surprise there. What happens if we
+call it with different arguments?</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mod</span><span class="p">(</span><span class="s2">&quot;by</span><span class="si">%s</span><span class="s2">de&quot;</span><span class="p">,</span> <span class="s2">&quot;teco&quot;</span><span class="p">)</span>
+<span class="go">&#39;bytecode&#39;</span>
+</pre></div>
+</div>
+<p>What just happened? You've probably seen this syntax before, but in a
+different context:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;by</span><span class="si">%s</span><span class="s2">de&quot;</span> <span class="o">%</span> <span class="s2">&quot;teco&quot;</span><span class="p">)</span>
+<span class="go">bytecode</span>
+</pre></div>
+</div>
+<p>Using the symbol <code class="docutils literal"><span class="pre">%</span></code> to format a string for printing means invoking
+the instruction <code class="docutils literal"><span class="pre">BINARY_MODULO</span></code>. This instruction mods together the
+top two values on the stack when the instruction executes—regardless of
+whether they're strings, integers, or instances of a class you defined
+yourself. The bytecode was generated when the function was compiled
+(effectively, when it was defined) and the same bytecode is used with
+different types of arguments.</p>
+<p>The Python compiler knows relatively little about the effect the
+bytecode will have. It's up to the interpreter to determine the type of
+the object that <code class="docutils literal"><span class="pre">BINARY_MODULO</span></code> is operating on and do the right thing
+for that type. This is why Python is described as <em>dynamically typed</em>:
+you don't know the types of the arguments to this function until you
+actually run it. By contrast, in a language that's statically typed, the
+programmer tells the compiler up front what type the arguments will be
+(or the compiler figures them out for itself).</p>
+<p>The compiler's ignorance is one of the challenges to optimizing Python
+or analyzing it statically—just looking at the bytecode, without
+actually running the code, you don't know what each instruction will do!
+In fact, you could define a class that implements the <code class="docutils literal"><span class="pre">__mod__</span></code>
+method, and Python would invoke that method if you use <code class="docutils literal"><span class="pre">%</span></code> on your
+objects. So <code class="docutils literal"><span class="pre">BINARY_MODULO</span></code> could run any code at all!</p>
+<p>Just looking at the following code, the first calculation of <code class="docutils literal"><span class="pre">a</span> <span class="pre">%</span> <span class="pre">b</span></code>
+seems wasteful.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">mod</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">%</span> <span class="n">b</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">%</span><span class="n">b</span>
+</pre></div>
+</div>
+<p>Unfortunately, a static analysis of this code—the kind of you can do
+without running it—can't be certain that the first <code class="docutils literal"><span class="pre">a</span> <span class="pre">%</span> <span class="pre">b</span></code> really does
+nothing. Calling <code class="docutils literal"><span class="pre">__mod__</span></code> with <code class="docutils literal"><span class="pre">%</span></code> might write to a file, or
+interact with another part of your program, or do literally anything
+else that's possible in Python. It's hard to optimize a function when
+you don't know what it does! In Russell Power and Alex Rubinsteyn's
+great paper &quot;How fast can we make interpreted Python?&quot;, they note, &quot;In
+the general absence of type information, each instruction must be
+treated as <code class="docutils literal"><span class="pre">INVOKE_ARBITRARY_METHOD</span></code>.&quot;</p>
+<p class="rubric" id="conclusion">Conclusion</p>
+<p>Byterun is a compact Python interpreter that's easier to understand than
+CPython. Byterun replicates CPython's primary structural details: a
+stack-based interpreter operating on instruction sets called bytecode.
+It steps or jumps through these instructions, pushing to and popping
+from a stack of data. The interpreter creates, destroys, and jumps
+between frames as it calls into and returns from functions and
+generators. Byterun shares the real interpreter's limitations, too:
+because Python uses dynamic typing, the interpreter must work hard at
+run time to determine the correct behavior of a program.</p>
+<p>I encourage you to disassemble your own programs and to run them using
+Byterun. You'll quickly run into instructions that this shorter version
+of Byterun doesn't implement. The full implementation can be found at
+<a class="reference external" href="https://github.com/nedbat/byterun">https://github.com/nedbat/byterun</a>—or, by carefully reading the real
+CPython interpreter's <code class="docutils literal"><span class="pre">ceval.c</span></code>, you can implement it yourself!</p>
+<p class="rubric" id="acknowledgements">Acknowledgements</p>
+<p>Thanks to Ned Batchelder for originating this project and guiding my
+contributions, Michael Arntzenius for his help debugging the code and
+editing the prose, Leta Montopoli for her edits, and the entire Recurse
+Center community for their support and interest. Any errors are my own.</p>
+<div class="footnotes"><hr class="docutils" />
+<ol class="arabic">
+<li><div class="first"><div id="fn1"></div></div><p>This chapter is based on bytecode produced by Python 3.5 or earlier,
+as there were some changes to the bytecode specification in Python
+3.6.<a class="reference external" href="#fnref1">↩</a></p>
+</li>
+<li><div class="first"><div id="fn2"></div></div><p>My thanks to Michael Arntzenius for his insight on this
+bug.<a class="reference external" href="#fnref2">↩</a></p>
+</li>
+</ol>
+</div></div></div></div></div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Learn-Computer-and-Math-again</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="blockcode-a-visual-programming-toolkit.html">500 Lines or Less | Blockcode: A visual programming toolkit</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>快速搜索</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="转向" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, timger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/chapters/a-python-interpreter-written-in-python.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

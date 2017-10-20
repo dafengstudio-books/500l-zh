@@ -1,0 +1,1983 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>500 Lines or Less | Dagoba: an in-memory graph database &#8212; Learn-Computer-and-Math-again 0.0.1 文档</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="索引" href="../genindex.html" />
+    <link rel="search" title="搜索" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lines-or-less-dagoba-an-in-memory-graph-database">
+<h1>500 Lines or Less | Dagoba: an in-memory graph database<a class="headerlink" href="#lines-or-less-dagoba-an-in-memory-graph-database" title="永久链接至标题">¶</a></h1>
+<div class="container"><div class="row"><div class="hero-unit"><p><a href="#id1"><span class="problematic" id="id2">``</span></a>_
+.. rubric:: Dagoba: an in-memory graph database</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">name:</th><td class="field-body">dagoba-an-in-memory-graph-database</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p class="author rubric" id="dann-toliver">Dann Toliver</p>
+</div></div><div class="row"><div id="content" class="span10 offset1"><p><em>`Dann`_ enjoys building things, like programming languages, databases,
+distributed systems, communities of smart friendly humans, and pony
+castles with his two year old.</em></p>
+<p>A long time ago, when the world was still young, all data walked happily
+in single file. If you wanted your data to jump over a fence, you just
+set the fence down in its path and each datum jumped it in turn. Punch
+cards in, punch cards out. Life was easy and programming was a breeze.</p>
+<p>Then came the random access revolution, and data grazed freely across
+the hillside. Herding data became a serious concern: if you can access
+any piece of data at any time, how do you know which one to pick next?
+Techniques were developed for corralling the data by forming links
+between items<a class="reference external" href="#fn1">:sup:`1`</a>, marshaling groups of units into formation
+through their linking assemblage. Questioning data meant picking a sheep
+and pulling along everything connected to it.</p>
+<p>Later programmers departed from this tradition, imposing a set of rules
+on how data would be aggregated<a class="reference external" href="#fn2">:sup:`2`</a>. Rather than tying
+disparate data directly together they would cluster by content,
+decomposing data into bite-sized pieces, collected in pens and collared
+with name tags. Questions were posed declaratively, resulting in
+accumulating pieces of partially decomposed data (a state the
+relationalists refer to as &quot;normal&quot;) into a frankencollection returned
+to the programmer.</p>
+<p>For much of recorded history this relational model reigned supreme. Its
+dominance went unchallenged through two major language wars and
+countless skirmishes. It offered everything you could ask for in a
+model, for the small price of inefficiency, clumsiness and lack of
+scalability. For eons that was a price programmers were willing to pay.
+Then the internet happened.</p>
+<p>The distributed revolution changed everything, again. Data broke free of
+spacial constraints and roamed from machine to machine. CAP-wielding
+theorists busted the relational monopoly, opening the door to new
+herding techniques—some of which hark back to the earliest attempts to
+domesticate random-access data. We're going to look at one of these, a
+style known as the graph database.</p>
+<p class="rubric" id="take-one">Take One</p>
+<p>Within this chapter we're going to build a graph database<a class="reference external" href="#fn3">:sup:`3`</a>.
+As we build it we're going to explore the problem space, generate
+multiple solutions for our design decisions, compare those solutions to
+understand the tradeoffs between them, and finally choose the right
+solution for our system. A higher-than-usual precedence is put on code
+compactness, but the process will otherwise mirror that used by software
+professionals since time immemorial. The purpose of this chapter is to
+teach this process. And to build a graph database<a class="reference external" href="#fn4">:sup:`4`</a>.</p>
+<p>Using a graph database will allow us to solve some interesting problems
+in an elegant fashion. Graphs are a very natural data structure for
+exploring connections between things. A graph in this sense is a set of
+vertices and a set of edges; in other words, it's a bunch of dots
+connected by lines. And a database? A &quot;data base&quot; is like a fort for
+data. You put data in it and get data back out of it.</p>
+<p>So what kinds of problems can we solve with a graph database? Well,
+suppose that you enjoy tracking ancestral trees: parents, grandparents,
+cousins twice removed, that kind of thing. You'd like to develop a
+system that allows you to make natural and elegant queries like &quot;Who are
+Thor's second cousins once removed?&quot; or &quot;What is Freyja's connection to
+the Valkyries?&quot;</p>
+<p>A reasonable schema for this data structure would be to have a table of
+entities and a table of relationships. A query for Thor's parents might
+look like</p>
+<div class="code sql highlight-default"><div class="highlight"><pre><span></span><span class="n">SELECT</span> <span class="n">e</span><span class="o">.*</span> <span class="n">FROM</span> <span class="n">entities</span> <span class="k">as</span> <span class="n">e</span><span class="p">,</span> <span class="n">relationships</span> <span class="k">as</span> <span class="n">r</span>
+<span class="n">WHERE</span> <span class="n">r</span><span class="o">.</span><span class="n">out</span> <span class="o">=</span> <span class="s2">&quot;Thor&quot;</span> <span class="n">AND</span> <span class="n">r</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="s2">&quot;parent&quot;</span> <span class="n">AND</span> <span class="n">r</span><span class="o">.</span><span class="ow">in</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">id</span>
+</pre></div>
+</div>
+<p>But how do we extend that to grandparents? We need to do a subquery, or
+use some other type of vendor-specific extension to SQL. And by the time
+we get to second cousins once removed we're going to have <em>a lot</em> of
+SQL.</p>
+<p>What would we like to write? Something both concise and flexible;
+something that models our query in a natural way and extends to other
+queries like it. <code class="docutils literal"><span class="pre">second_cousins('Thor')</span></code> is concise, but it doesn't
+give us any flexibility. The SQL above is flexible, but lacks concision.</p>
+<p>Something like
+<code class="docutils literal"><span class="pre">Thor.parents.parents.parents.children.children.children</span></code> strikes a
+reasonably good balance. The primitives give us flexibility to ask many
+similar questions, but the query is concise and natural. This particular
+phrasing gives us too many results, as it includes first cousins and
+siblings, but we're going for gestalt here.</p>
+<p>What's the simplest thing we can build that gives us this kind of
+interface? We could make a list of vertices and a list of edges, just
+like the relational schema, and then build some helper functions. It
+might look something like this:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">V</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span> <span class="p">]</span>
+<span class="n">E</span> <span class="o">=</span> <span class="p">[</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span>  <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span>  <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span>  <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">],</span>  <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">7</span><span class="p">],</span>  <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">8</span><span class="p">]</span>
+    <span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">9</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">11</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">12</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">13</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span><span class="mi">14</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span><span class="mi">15</span><span class="p">]</span> <span class="p">]</span>
+
+<span class="n">parents</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertices</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">var</span> <span class="n">accumulator</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">for</span><span class="p">(</span><span class="n">var</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">E</span><span class="o">.</span><span class="n">length</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">var</span> <span class="n">edge</span> <span class="o">=</span> <span class="n">E</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">vertices</span><span class="o">.</span><span class="n">indexOf</span><span class="p">(</span><span class="n">edge</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">!==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+      <span class="n">accumulator</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">edge</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">accumulator</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The essence of the above function is to iterate over a list, evaluating
+some code for each item and building up an accumulator of results.
+That's not quite as clear as it could be, though, because the looping
+construct introduces some unnecessary complexity.</p>
+<p>It'd be nice if there was a more specific looping construct designed for
+this purpose. As it happens, the <code class="docutils literal"><span class="pre">reduce</span></code> function does exactly that:
+given a list and a function, it evaluates the function for each element
+of the list, while threading the accumulator through each evaluation
+pass.</p>
+<p>Written in this more functional style our queries are shorter and
+clearer:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>parents  = (vertices) =&gt; E.reduce( (acc, [parent, child])
+         =&gt; vertices.includes(child)  ? acc.concat(parent) : acc , [] )
+children = (vertices) =&gt; E.reduce( (acc, [parent, child])
+         =&gt; vertices.includes(parent) ? acc.concat(child)  : acc , [] )
+</pre></div>
+</div>
+<p>Given a list of vertices we reduce over the edges, adding an edge's
+parent to the accumulator if the edge's child is in our input list. The
+<code class="docutils literal"><span class="pre">children</span></code> function is identical, but examines the edge's parent to
+determine whether to add the edge's child.</p>
+<p>Those functions are valid JavaScript, but use a few features which
+browsers haven't implemented as of this writing. This translated version
+will work today:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>parents  = function(x) { return E.reduce(
+  function(acc, e) { return ~x.indexOf(e[1]) ? acc.concat(e[0]) : acc }, [] )}
+children = function(x) { return E.reduce(
+  function(acc, e) { return ~x.indexOf(e[0]) ? acc.concat(e[1]) : acc }, [] )}
+</pre></div>
+</div>
+<p>Now we can say something like:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">children</span><span class="p">(</span><span class="n">children</span><span class="p">(</span><span class="n">children</span><span class="p">(</span><span class="n">parents</span><span class="p">(</span><span class="n">parents</span><span class="p">(</span><span class="n">parents</span><span class="p">([</span><span class="mi">8</span><span class="p">]))))))</span>
+</pre></div>
+</div>
+<p>It reads backwards and gets us lost in silly parens, but is otherwise
+pretty close to what we wanted. Take a minute to look at the code. Can
+you see any ways to improve it?</p>
+<p>We're treating the edges as a global variable, which means we can only
+ever have one database at a time using these helper functions. That's
+pretty limiting.</p>
+<p>We're also not using the vertices at all. What does that tell us? It
+implies that everything we need is in the edges array, which in this
+case is true: the vertex values are scalars, so they exist independently
+in the edges array. If we want to answer questions like &quot;What is
+Freyja's connection to the Valkyries?&quot; we'll need to add more data to
+the vertices, which means making them compound values, which means the
+edges array should reference vertices instead of copying their value.</p>
+<p>The same holds true for our edges: they contain an &quot;in&quot; vertex and an
+&quot;out&quot; vertex<a class="reference external" href="#fn5">:sup:`5`</a>, but no elegant way to incorporate additional
+information. We'll need that to answer questions like &quot;How many
+stepparents did Loki have?&quot; or &quot;How many children did Odin have before
+Thor was born?&quot;</p>
+<p>You don't have to squint very hard to tell that the code for our two
+selectors looks very similar, which suggests there may be a deeper
+abstraction from which they spring.</p>
+<p>Do you see any other issues?</p>
+<p class="rubric" id="build-a-better-graph">Build a Better Graph</p>
+<p>Let's solve a few of the problems we've discovered. Having our vertices
+and edges be global constructs limits us to one graph at a time, but
+we'd like to have more. To solve this we'll need some structure. Let's
+start with a namespace.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span> <span class="o">=</span> <span class="p">{}</span>                                     <span class="o">//</span> <span class="n">the</span> <span class="n">namespace</span>
+</pre></div>
+</div>
+<p>We'll use an object as our namespace. An object in JavaScript is mostly
+just an unordered set of key/value pairs. We only have four basic data
+structures to choose from in JavaScript, so we'll be using this one a
+lot. (A fun question to ask people at parties is &quot;What are the four
+basic data structures in JavaScript?&quot;)</p>
+<p>Now we need some graphs. We can build these using a classic OOP pattern,
+but JavaScript offers us prototypal inheritance, which means we can
+build up a prototype object—we'll call it <code class="docutils literal"><span class="pre">Dagoba.G</span></code>—and then
+instantiate copies of that using a factory function. An advantage of
+this approach is that we can return different types of objects from the
+factory, instead of binding the creation process to a single class
+constructor. So we get some extra flexibility for free.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="p">{}</span>                                   <span class="o">//</span> <span class="n">the</span> <span class="n">prototype</span>
+
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">E</span><span class="p">)</span> <span class="p">{</span>                 <span class="o">//</span> <span class="n">the</span> <span class="n">factory</span>
+  <span class="n">var</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">Object</span><span class="o">.</span><span class="n">create</span><span class="p">(</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span> <span class="p">)</span>
+
+  <span class="n">graph</span><span class="o">.</span><span class="n">edges</span>       <span class="o">=</span> <span class="p">[]</span>                        <span class="o">//</span> <span class="n">fresh</span> <span class="n">copies</span> <span class="n">so</span> <span class="n">they</span><span class="s1">&#39;re not shared</span>
+  <span class="n">graph</span><span class="o">.</span><span class="n">vertices</span>    <span class="o">=</span> <span class="p">[]</span>
+  <span class="n">graph</span><span class="o">.</span><span class="n">vertexIndex</span> <span class="o">=</span> <span class="p">{}</span>                        <span class="o">//</span> <span class="n">a</span> <span class="n">lookup</span> <span class="n">optimization</span>
+
+  <span class="n">graph</span><span class="o">.</span><span class="n">autoid</span> <span class="o">=</span> <span class="mi">1</span>                              <span class="o">//</span> <span class="n">an</span> <span class="n">auto</span><span class="o">-</span><span class="n">incrementing</span> <span class="n">ID</span> <span class="n">counter</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">Array</span><span class="o">.</span><span class="n">isArray</span><span class="p">(</span><span class="n">V</span><span class="p">))</span> <span class="n">graph</span><span class="o">.</span><span class="n">addVertices</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>     <span class="o">//</span> <span class="n">arrays</span> <span class="n">only</span><span class="p">,</span> <span class="n">because</span> <span class="n">you</span> <span class="n">wouldn</span><span class="s1">&#39;t</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">Array</span><span class="o">.</span><span class="n">isArray</span><span class="p">(</span><span class="n">E</span><span class="p">))</span> <span class="n">graph</span><span class="o">.</span><span class="n">addEdges</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>        <span class="o">//</span>   <span class="n">call</span> <span class="n">this</span> <span class="k">with</span> <span class="n">singular</span> <span class="n">V</span> <span class="ow">and</span> <span class="n">E</span>
+
+  <span class="k">return</span> <span class="n">graph</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We'll accept two optional arguments: a list of vertices and a list of
+edges. JavaScript is rather lax about parameters, so all named
+parameters are optional and default to <code class="docutils literal"><span class="pre">undefined</span></code> if not
+supplied<a class="reference external" href="#fn6">:sup:`6`</a>. We will often have the vertices and edges before
+building the graph and use the V and E parameters, but it's also common
+to not have those at creation time and to build the graph up
+programmatically<a class="reference external" href="#fn7">:sup:`7`</a>.</p>
+<p>Then we create a new object that has all of our prototype's strengths
+and none of its weaknesses. We build a brand new array (one of the other
+basic JS data structures) for our edges, another for the vertices, a new
+object called <code class="docutils literal"><span class="pre">vertexIndex</span></code> and an ID counter—more on those latter two
+later. (Think: Why can't we just put these in the prototype?)</p>
+<p>Then we call <code class="docutils literal"><span class="pre">addVertices</span></code> and <code class="docutils literal"><span class="pre">addEdges</span></code> from inside our factory,
+so let's define those now.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">addVertices</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vs</span><span class="p">)</span> <span class="p">{</span> <span class="n">vs</span><span class="o">.</span><span class="n">forEach</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">addVertex</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">this</span><span class="p">))</span> <span class="p">}</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">addEdges</span>    <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">es</span><span class="p">)</span> <span class="p">{</span> <span class="n">es</span><span class="o">.</span><span class="n">forEach</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">addEdge</span>  <span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">this</span><span class="p">))</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Okay, that was too easy—we're just passing off the work to <code class="docutils literal"><span class="pre">addVertex</span></code>
+and <code class="docutils literal"><span class="pre">addEdge</span></code>. We should define those now too.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.G.addVertex = function(vertex) {         // accepts a vertex-like object
+  if(!vertex._id)
+    vertex._id = this.autoid++
+  else if(this.findVertexById(vertex._id))
+    return Dagoba.error(&#39;A vertex with that ID already exists&#39;)
+
+  this.vertices.push(vertex)
+  this.vertexIndex[vertex._id] = vertex         // a fancy index thing
+  vertex._out = []; vertex._in = []             // placeholders for edge pointers
+  return vertex._id
+}
+</pre></div>
+</div>
+<p>If the vertex doesn't already have an <code class="docutils literal"><span class="pre">_id</span></code> property we assign it one
+using our autoid.<a class="reference external" href="#fn8">:sup:`8`</a> If the <code class="docutils literal"><span class="pre">_id</span></code> already exists on a vertex
+in our graph then we reject the new vertex. Wait, when would that
+happen? And what exactly is a vertex?</p>
+<p>In a traditional object-oriented system we would expect to find a vertex
+class, which all vertices would be an instance of. We're going to take a
+different approach and consider as a vertex any object containing the
+three properties <code class="docutils literal"><span class="pre">_id</span></code>, <code class="docutils literal"><span class="pre">_in</span></code> and <code class="docutils literal"><span class="pre">_out</span></code>. Why is that? Ultimately,
+it comes down to giving Dagoba control over which data is shared with
+the host application.</p>
+<p>If we create some <code class="docutils literal"><span class="pre">Dagoba.Vertex</span></code> instance inside the <code class="docutils literal"><span class="pre">addVertex</span></code>
+function, our internal data will never be shared with the host
+application. If we accept a <code class="docutils literal"><span class="pre">Dagoba.Vertex</span></code> instance as the argument
+to our <code class="docutils literal"><span class="pre">addVertex</span></code> function, the host application could retain a
+pointer to that vertex object and manipulate it at runtime, breaking our
+invariants.</p>
+<p>So if we create a vertex instance object, we're forced to decide up
+front whether we will always copy the provided data into a new
+object—potentially doubling our space usage—or allow the host
+application unfettered access to the database objects. There's a tension
+here between performance and protection, and the right balance depends
+on your specific use case.</p>
+<p>Duck typing on the vertex's properties allows us to make that decision
+at run time, by either deep copying<a class="reference external" href="#fn9">:sup:`9`</a> the incoming data or
+using it directly as a vertex<a class="reference external" href="#fn10">:sup:`10`</a>. We don't always want to put
+the responsibility for balancing safety and performance in the hands of
+the user, but because these two sets of use cases diverge so widely the
+extra flexibility is important.</p>
+<p>Now that we've got our new vertex we'll add it to our graph's list of
+vertices, add it to the <code class="docutils literal"><span class="pre">vertexIndex</span></code> for efficient lookup by <code class="docutils literal"><span class="pre">_id</span></code>,
+and add two additional properties to it: <code class="docutils literal"><span class="pre">_out</span></code> and <code class="docutils literal"><span class="pre">_in</span></code>, which
+will both become lists of edges<a class="reference external" href="#fn11">:sup:`11`</a>.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.G.addEdge = function(edge) {             // accepts an edge-like object
+  edge._in  = this.findVertexById(edge._in)
+  edge._out = this.findVertexById(edge._out)
+
+  if(!(edge._in &amp;&amp; edge._out))
+    return Dagoba.error(&quot;That edge&#39;s &quot; + (edge._in ? &#39;out&#39; : &#39;in&#39;)
+                                       + &quot; vertex wasn&#39;t found&quot;)
+
+  edge._out._out.push(edge)                     // edge&#39;s out vertex&#39;s out edges
+  edge._in._in.push(edge)                       // vice versa
+
+  this.edges.push(edge)
+}
+</pre></div>
+</div>
+<p>First we find both vertices which the edge connects, then reject the
+edge if it's missing either vertex. We'll use a helper function to log
+an error on rejection. All errors flow through this helper function, so
+we can override its behavior on a per-application basis. We could later
+extend this to allow <code class="docutils literal"><span class="pre">onError</span></code> handlers to be registered, so the host
+application could link in its own callbacks without overwriting the
+helper. We might allow such handlers to be registered per-graph,
+per-application, or both, depending on the level of flexibility
+required.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">error</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">false</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then we'll add our new edge to both vertices' edge lists: the edge's out
+vertex's list of out-side edges, and the in vertex's list of in-side
+edges.</p>
+<p>And that's all the graph structure we need for now!</p>
+<p class="rubric" id="enter-the-query">Enter the Query</p>
+<p>There are really only two parts to this system: the part that holds the
+graph and the part that answers questions about the graph. The part that
+holds the graph is pretty simple, as we've seen. The query part is a
+little trickier.</p>
+<p>We'll start just like before, with a prototype and a query factory.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">query</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span> <span class="p">{</span>                <span class="o">//</span> <span class="n">factory</span>
+  <span class="n">var</span> <span class="n">query</span> <span class="o">=</span> <span class="n">Object</span><span class="o">.</span><span class="n">create</span><span class="p">(</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">Q</span> <span class="p">)</span>
+
+  <span class="n">query</span><span class="o">.</span>   <span class="n">graph</span> <span class="o">=</span> <span class="n">graph</span>                        <span class="o">//</span> <span class="n">the</span> <span class="n">graph</span> <span class="n">itself</span>
+  <span class="n">query</span><span class="o">.</span>   <span class="n">state</span> <span class="o">=</span> <span class="p">[]</span>                           <span class="o">//</span> <span class="n">state</span> <span class="k">for</span> <span class="n">each</span> <span class="n">step</span>
+  <span class="n">query</span><span class="o">.</span> <span class="n">program</span> <span class="o">=</span> <span class="p">[]</span>                           <span class="o">//</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">steps</span> <span class="n">to</span> <span class="n">take</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">gremlins</span> <span class="o">=</span> <span class="p">[]</span>                           <span class="o">//</span> <span class="n">gremlins</span> <span class="k">for</span> <span class="n">each</span> <span class="n">step</span>
+
+  <span class="k">return</span> <span class="n">query</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now's a good time to introduce some friends.</p>
+<p>A <em>program</em> is a series of <em>steps</em>. Each step is like a pipe in a
+pipeline—a piece of data comes in one end, is transformed in some
+fashion, and goes out the other end. Our pipeline doesn't quite work
+like that, but it's a good first approximation.</p>
+<p>Each step in our program can have <em>state</em>, and <code class="docutils literal"><span class="pre">query.state</span></code> is a list
+of per-step states that index correlates with the list of steps in
+<code class="docutils literal"><span class="pre">query.program</span></code>.</p>
+<p>A <em>gremlin</em> is a creature that travels through the graph doing our
+bidding. A gremlin might be a surprising thing to find in a database,
+but they trace their heritage back to Tinkerpop's <a class="reference external" href="http://euranova.eu/upl_docs/publications/an-empirical-comparison-of-graph-databases.pdf">Blueprints</a>, and the
+<a class="reference external" href="http://edbt.org/Proceedings/2013-Genova/papers/workshops/a29-holzschuher.pdf">Gremlin and Pacer query languages</a>. They remember where they've been
+and allow us to find answers to interesting questions.</p>
+<p>Remember that question we wanted to answer about Thor's second cousins
+once removed? We decided
+<code class="docutils literal"><span class="pre">Thor.parents.parents.parents.children.children.children</span></code> was a pretty
+good way of expressing that. Each <code class="docutils literal"><span class="pre">parents</span></code> or <code class="docutils literal"><span class="pre">children</span></code> instance
+is a step in our program. Each of those steps contains a reference to
+its <em>pipetype</em>, which is the function that performs that step's
+operation.</p>
+<p>That query in our actual system might look like:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Each of the steps is a function call, and so they can take <em>arguments</em>.
+The interpreter passes the step's arguments to the step's pipetype
+function, so in the query <code class="docutils literal"><span class="pre">g.v('Thor').out(2,</span> <span class="pre">3)</span></code> the <code class="docutils literal"><span class="pre">out</span></code> pipetype
+function would receive <code class="docutils literal"><span class="pre">[2,</span> <span class="pre">3]</span></code> as its first parameter.</p>
+<p>We'll need a way to add steps to our query. Here's a helper function for
+that:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">add</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">pipetype</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span> <span class="o">//</span> <span class="n">add</span> <span class="n">a</span> <span class="n">new</span> <span class="n">step</span> <span class="n">to</span> <span class="n">the</span> <span class="n">query</span>
+  <span class="n">var</span> <span class="n">step</span> <span class="o">=</span> <span class="p">[</span><span class="n">pipetype</span><span class="p">,</span> <span class="n">args</span><span class="p">]</span>
+  <span class="n">this</span><span class="o">.</span><span class="n">program</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>                 <span class="o">//</span> <span class="n">step</span> <span class="ow">is</span> <span class="n">a</span> <span class="n">pair</span> <span class="n">of</span> <span class="n">pipetype</span> <span class="ow">and</span> <span class="n">its</span> <span class="n">args</span>
+  <span class="k">return</span> <span class="n">this</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Each step is a composite entity, combining the pipetype function with
+the arguments to apply to that function. We could combine the two into a
+partially applied function at this stage, instead of using a tuple
+<a class="reference external" href="#fn12">:sup:`12`</a>, but then we'd lose some introspective power that will
+prove helpful later.</p>
+<p>We'll use a small set of query initializers that generate a new query
+from a graph. Here's one that starts most of our examples: the <code class="docutils literal"><span class="pre">v</span></code>
+method. It builds a new query, then uses our <code class="docutils literal"><span class="pre">add</span></code> helper to populate
+the initial query program. This makes use of the <code class="docutils literal"><span class="pre">vertex</span></code> pipetype,
+which we'll look at soon.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span>                       <span class="o">//</span> <span class="n">query</span> <span class="n">initializer</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">query</span>
+  <span class="n">var</span> <span class="n">query</span> <span class="o">=</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+  <span class="n">query</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;vertex&#39;</span><span class="p">,</span> <span class="p">[]</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">arguments</span><span class="p">))</span> <span class="o">//</span> <span class="n">add</span> <span class="n">a</span> <span class="n">step</span> <span class="n">to</span> <span class="n">our</span> <span class="n">program</span>
+  <span class="k">return</span> <span class="n">query</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Note that <code class="docutils literal"><span class="pre">[].slice.call(arguments)</span></code> is JS parlance for &quot;please pass
+me an array of this function's arguments&quot;. You would be forgiven for
+supposing that <code class="docutils literal"><span class="pre">arguments</span></code> is already an array, since it behaves like
+one in many situations, but it is lacking much of the functionality we
+utilize in modern JavaScript arrays.</p>
+<p class="rubric" id="the-problem-with-being-eager">The Problem with Being Eager</p>
+<p>Before we look at the pipetypes themselves we're going to take a
+diversion into the exciting world of execution strategy. There are two
+main schools of thought: the Call By Value clan, also known as eager
+beavers, are strict in their insistence that all arguments be evaluated
+before the function is applied. Their opposing faction, the Call By
+Needians, are content to procrastinate until the last possible moment
+before doing anything—they are, in a word, lazy.</p>
+<p>JavaScript, being a strict language, will process each of our steps as
+they are called. We would then expect the evaluation of
+<code class="docutils literal"><span class="pre">g.v('Thor').out().in()</span></code> to first find the Thor vertex, then find all
+vertices connected to it by outgoing edges, and from each of those
+vertices finally return all vertices they are connected to by inbound
+edges.</p>
+<p>In a non-strict language we would get the same result—the execution
+strategy doesn't make much difference here. But what if we added a few
+additional calls? Given how well-connected Thor is, our
+<code class="docutils literal"><span class="pre">g.v('Thor').out().out().out().in().in().in()</span></code> query may produce many
+results—in fact, because we're not limiting our vertex list to unique
+results, it may produce many more results than we have vertices in our
+total graph.</p>
+<p>We're probably only interested in getting a few unique results out, so
+we'll change the query a bit:
+<code class="docutils literal"><span class="pre">g.v('Thor').out().out().out().in().in().in().unique().take(10)</span></code>. Now
+our query produces at most 10 results. What happens if we evaluate this
+eagerly, though? We're still going to have to build up septillions of
+results before returning only the first 10.</p>
+<p>All graph databases have to support a mechanism for doing as little work
+as possible, and most choose some form of non-strict evaluation to do
+so. Since we're building our own interpreter, the lazy evaluation of our
+program is possible, but we may have to contend with some consequences.</p>
+<p class="rubric" id="ramifications-of-evaluation-strategy-on-our-mental-model">Ramifications of Evaluation Strategy on our Mental Model</p>
+<p>Up until now our mental model for evaluation has been very simple:</p>
+<ul class="simple">
+<li>request a set of vertices</li>
+<li>pass the returned set as input to a pipe</li>
+<li>repeat as necessary</li>
+</ul>
+<p>We would like to retain that model for our users, because it's easier to
+reason about, but as we've seen we can no longer use that model for the
+implementation. Having users think in a model that differs from the
+actual implementation is a source of much pain. A leaky abstraction is a
+small-scale version of this; in the large it can lead to frustration,
+cognitive dissonance and ragequits.</p>
+<p>Our case is nearly optimal for this deception, though: the answer to any
+query will be the same, regardless of execution model. The only
+difference is the performance. The tradeoff is between having all users
+learn a more complicated model prior to using the system, or forcing a
+subset of users to transfer from the simple model to the complicated
+model in order to better reason about query performance.</p>
+<p>Some factors to consider when wrestling with this decision are:</p>
+<ul class="simple">
+<li>the relative cognitive difficulty of learning the simple model versus
+the more complex model;</li>
+<li>the additional cognitive load imposed by first using the simple model
+and then advancing to the complex one versus skipping the simple and
+learning only the complex;</li>
+<li>the subset of users required to make the transition, in terms of
+their proportional size, cognitive availability, available time, and
+so on.</li>
+</ul>
+<p>In our case this tradeoff makes sense. For most uses queries will return
+results fast enough that users needn't be concerned with optimizing
+their query structure or learning the deeper model. Those who will are
+the users writing advanced queries over large datasets, and they are
+also likely the users most well-equipped to transition to a new model.
+Additionally, our hope is that there is only a small increase in
+difficulty imposed by using the simple model before learning the more
+complex one.</p>
+<p>We'll go into more detail on this new model soon, but in the meantime
+here are some highlights to keep in mind during the next section:</p>
+<ul class="simple">
+<li>Each pipe returns one result at a time, not a set of results. Each
+pipe may be activated many times while evaluating a query.</li>
+<li>A read/write head controls which pipe is activated next. The head
+starts at the end of the pipeline, and its movement is directed by
+the result of the currently active pipe.</li>
+<li>That result might be one of the aforementioned gremlins. Each gremlin
+represents a potential query result, and they carry state with them
+through the pipes. Gremlins cause the head to move to the right.</li>
+<li>A pipe can return a result of 'pull', which signals the head that it
+needs input and moves it to the right.</li>
+<li>A result of 'done' tells the head that nothing prior needs to be
+activated again, and moves the head left.</li>
+</ul>
+<p class="rubric" id="pipetypes">Pipetypes</p>
+<p>Pipetypes make up the core of our system. Once we understand how each
+one works, we'll have a better basis for understanding how they're
+invoked and sequenced together in the interpreter.</p>
+<p>We'll start by making a place to put our pipetypes, and a way to add new
+ones.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">Pipetypes</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addPipetype</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">fun</span><span class="p">)</span> <span class="p">{</span>              <span class="o">//</span> <span class="n">adds</span> <span class="n">a</span> <span class="n">chainable</span> <span class="n">method</span>
+  <span class="n">Dagoba</span><span class="o">.</span><span class="n">Pipetypes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">fun</span>
+  <span class="n">Dagoba</span><span class="o">.</span><span class="n">Q</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[]</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">arguments</span><span class="p">))</span> <span class="p">}</span>  <span class="o">//</span> <span class="n">capture</span> <span class="n">pipetype</span> <span class="ow">and</span> <span class="n">args</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The pipetype's function is added to the list of pipetypes, and then a
+new method is added to the query object. Every pipetype must have a
+corresponding query method. That method adds a new step to the query
+program, along with its arguments.</p>
+<p>When we evaluate <code class="docutils literal"><span class="pre">g.v('Thor').out('parent').in('parent')</span></code> the <code class="docutils literal"><span class="pre">v</span></code>
+call returns a query object, the <code class="docutils literal"><span class="pre">out</span></code> call adds a new step and
+returns the query object, and the <code class="docutils literal"><span class="pre">in</span></code> call does the same. This is
+what enables our method-chaining API.</p>
+<p>Note that adding a new pipetype with the same name replaces the existing
+one, which allows runtime modification of existing pipetypes. What's the
+cost of this decision? What are the alternatives?</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.getPipetype = function(name) {
+  var pipetype = Dagoba.Pipetypes[name]                 // a pipetype is a function
+
+  if(!pipetype)
+    Dagoba.error(&#39;Unrecognized pipetype: &#39; + name)
+
+  return pipetype || Dagoba.fauxPipetype
+}
+</pre></div>
+</div>
+<p>If we can't find a pipetype, we generate an error and return the default
+pipetype, which acts like an empty conduit: if a message comes in one
+side, it gets passed out the other.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">fauxPipetype</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">maybe_gremlin</span><span class="p">)</span> <span class="p">{</span>   <span class="o">//</span> <span class="k">pass</span> <span class="n">the</span> <span class="n">result</span> <span class="n">upstream</span>
+  <span class="k">return</span> <span class="n">maybe_gremlin</span> <span class="o">||</span> <span class="s1">&#39;pull&#39;</span>                        <span class="o">//</span> <span class="ow">or</span> <span class="n">send</span> <span class="n">a</span> <span class="n">pull</span> <span class="n">downstream</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>See those underscores? We use those to label params that won't be used
+in our function. Most other pipetypes will use all three parameters, and
+have all three parameter names. This allows us to distinguish at a
+glance which parameters a particular pipetype relies on.</p>
+<p>This underscore technique is also important because it makes the
+comments line up nicely. No, seriously. If programs <a class="reference external" href="https://mitpress.mit.edu/sicp/front/node3.html">&quot;must be written
+for people to read, and only incidentally for machines to execute&quot;</a>,
+then it immediately follows that our predominant concern should be
+making code pretty.</p>
+<p class="rubric" id="vertex">Vertex</p>
+<p>Most pipetypes we meet will take a gremlin and produce more gremlins,
+but this particular pipetype generates gremlins from just a string.
+Given an vertex ID it returns a single new gremlin. Given a query it
+will find all matching vertices, and yield one new gremlin at a time
+until it has worked through them.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;vertex&#39;, function(graph, args, gremlin, state) {
+  if(!state.vertices)
+    state.vertices = graph.findVertices(args)       // state initialization
+
+  if(!state.vertices.length)                        // all done
+    return &#39;done&#39;
+
+  var vertex = state.vertices.pop()                 // OPT: requires vertex cloning
+  return Dagoba.makeGremlin(vertex, gremlin.state)  // gremlins from as/back queries
+})
+</pre></div>
+</div>
+<p>We first check to see if we've already gathered matching vertices,
+otherwise we try to find some. If there are any vertices, we'll pop one
+off and return a new gremlin sitting on that vertex. Each gremlin can
+carry around its own state, like a journal of where it's been and what
+interesting things it has seen on its journey through the graph. If we
+receive a gremlin as input to this step we'll copy its journal for the
+exiting gremlin.</p>
+<p>Note that we're directly mutating the state argument here, and not
+passing it back. An alternative would be to return an object instead of
+a gremlin or signal, and pass state back that way. That complicates our
+return value, and creates some additional garbage <a class="reference external" href="#fn13">:sup:`13`</a>. If JS
+allowed multiple return values it would make this option more elegant.</p>
+<p>We would still need to find a way to deal with the mutations, though, as
+the call site maintains a reference to the original variable. What if we
+had some way to determine whether a particular reference is
+&quot;unique&quot;—that it is the only reference to that object?</p>
+<p>If we know a reference is unique then we can get the benefits of
+immutability while avoiding expensive copy-on-write schemes or
+complicated persistent data structures. With only one reference we can't
+tell whether the object has been mutated or a new object has been
+returned with the changes we requested: &quot;observed immutability&quot; is
+maintained <a class="reference external" href="#fn14">:sup:`14`</a>.</p>
+<p>There are a couple of common ways of determining this: in a statically
+typed system we might make use of uniqueness types <a class="reference external" href="#fn15">:sup:`15`</a> to
+guarantee at compile time that each object has only one reference. If we
+had a reference counter <a class="reference external" href="#fn16">:sup:`16`</a>—even just a cheap two-bit sticky
+counter—we could know at runtime that an object only has one reference
+and use that knowledge to our advantage.</p>
+<p>JavaScript doesn't have either of these facilities, but we can get
+almost the same effect if we're really, really disciplined. Which we
+will be. For now.</p>
+<p class="rubric" id="in-n-out">In-N-Out</p>
+<p>Walking the graph is as easy as ordering a burger. These two lines set
+up the <code class="docutils literal"><span class="pre">in</span></code> and <code class="docutils literal"><span class="pre">out</span></code> pipetypes for us.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">addPipetype</span><span class="p">(</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">simpleTraversal</span><span class="p">(</span><span class="s1">&#39;out&#39;</span><span class="p">))</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addPipetype</span><span class="p">(</span><span class="s1">&#39;in&#39;</span><span class="p">,</span>  <span class="n">Dagoba</span><span class="o">.</span><span class="n">simpleTraversal</span><span class="p">(</span><span class="s1">&#39;in&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">simpleTraversal</span></code> function returns a pipetype handler that accepts
+a gremlin as its input, and spawns a new gremlin each time it's queried.
+Once those gremlins are gone, it sends back a 'pull' request to get a
+new gremlin from its predecessor.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.simpleTraversal = function(dir) {
+  var find_method = dir == &#39;out&#39; ? &#39;findOutEdges&#39; : &#39;findInEdges&#39;
+  var edge_list   = dir == &#39;out&#39; ? &#39;_in&#39; : &#39;_out&#39;
+
+  return function(graph, args, gremlin, state) {
+    if(!gremlin &amp;&amp; (!state.edges || !state.edges.length))     // query initialization
+      return &#39;pull&#39;
+
+    if(!state.edges || !state.edges.length) {                 // state initialization
+      state.gremlin = gremlin
+      state.edges = graph[find_method](gremlin.vertex)        // get matching edges
+                         .filter(Dagoba.filterEdges(args[0]))
+    }
+
+    if(!state.edges.length)                                   // nothing more to do
+      return &#39;pull&#39;
+
+    var vertex = state.edges.pop()[edge_list]                 // use up an edge
+    return Dagoba.gotoVertex(state.gremlin, vertex)
+  }
+}
+</pre></div>
+</div>
+<p>The first couple of lines handle the differences between the in version
+and the out version. Then we're ready to return our pipetype function,
+which looks quite a bit like the vertex pipetype we just saw. That's a
+little surprising, since this one takes in a gremlin whereas the vertex
+pipetype creates gremlins <em>ex nihilo</em>.</p>
+<p>Yet we can see the same beats being hit here, with the addition of a
+query initialization step. If there's no gremlin and we're out of
+available edges then we pull. If we have a gremlin but haven't yet set
+state then we find any edges going the appropriate direction and add
+them to our state. If there's a gremlin but its current vertex has no
+appropriate edges then we pull. And finally we pop off an edge and
+return a freshly cloned gremlin on the vertex to which it points.</p>
+<p>Glancing at this code we see <code class="docutils literal"><span class="pre">!state.edges.length</span></code> repeated in each of
+the three clauses. It's tempting to refactor this to reduce the
+complexity of those conditionals. There are two issues keeping us from
+doing so.</p>
+<p>One is relatively minor: the third <code class="docutils literal"><span class="pre">!state.edges.length</span></code> means
+something different from the first two, since <code class="docutils literal"><span class="pre">state.edges</span></code> has been
+changed between the second and third conditional. This actually
+encourages us to refactor, because having the same label mean two
+different things inside a single function usually isn't ideal.</p>
+<p>The second is more serious. This isn't the only pipetype function we're
+writing, and we'll see these ideas of query initialization and/or state
+initialization repeated over and over. When writing code, there's always
+a balancing act between structured qualities and unstructured qualities.
+Too much structure and you pay a high cost in boilerplate and
+abstraction complexity. Too little structure and you'll have to keep all
+the plumbing minutia in your head.</p>
+<p>In this case, with a dozen or so pipetypes, the right choice seems to be
+to style each of the pipetype functions as similarly as possible, and
+label the constituent pieces with comments. So we resist our impulse to
+refactor this particular pipetype, because doing so would reduce
+uniformity, but we also resist the urge to engineer a formal structural
+abstraction for query initialization, state initialization, and the
+like. If there were hundreds of pipetypes that latter choice would
+probably be the right one: the complexity cost of the abstraction is
+constant, while the benefit accrues linearly with the number of units.
+When handling that many moving pieces, anything you can do to enforce
+regularity among them is helpful.</p>
+<p class="rubric" id="property">Property</p>
+<p>Let's pause for a moment to consider an example query based on the three
+pipetypes we've seen. We can ask for Thor's grandparents like
+this<a class="reference external" href="#fn17">:sup:`17`</a>:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>But what if we wanted their names? We could put a map on the end of
+that:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+ <span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span><span class="k">return</span> <span class="n">vertex</span><span class="o">.</span><span class="n">name</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>But this is a common enough operation that we'd prefer to write
+something more like:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">property</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Plus this way the property pipe is an integral part of the query,
+instead of something appended after. This has some interesting benefits,
+as we'll soon see.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;property&#39;, function(graph, args, gremlin, state) {
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+  gremlin.result = gremlin.vertex[args[0]]
+  return gremlin.result == null ? false : gremlin             // false for bad props
+})
+</pre></div>
+</div>
+<p>Our query initialization here is trivial: if there's no gremlin, we
+pull. If there is a gremlin, we'll set its result to the property's
+value. Then the gremlin can continue onward. If it makes it through the
+last pipe its result will be collected and returned from the query. Not
+all gremlins have a <code class="docutils literal"><span class="pre">result</span></code> property. Those that don't return their
+most recently visited vertex.</p>
+<p>Note that if the property doesn't exist we return <code class="docutils literal"><span class="pre">false</span></code> instead of
+the gremlin, so property pipes also act as a type of filter. Can you
+think of a use for this? What are the tradeoffs in this design decision?</p>
+<p class="rubric" id="unique">Unique</p>
+<p>If we want to collect all Thor's grandparents' grandchildren—his
+cousins, his siblings, and himself—we could do a query like this:
+<code class="docutils literal"><span class="pre">g.v('Thor').in().in().out().out().run()</span></code>. That would give us many
+duplicates, however. In fact there would be at least four copies of Thor
+himself. (Can you think of a time when there might be more?)</p>
+<p>To resolve this we introduce a new pipetype called 'unique'. Our new
+query produces output in one-to-one correspondence with the
+grandchildren:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The pipetype implementation:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;unique&#39;, function(graph, args, gremlin, state) {
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+  if(state[gremlin.vertex._id]) return &#39;pull&#39;                 // reject repeats
+  state[gremlin.vertex._id] = true
+  return gremlin
+})
+</pre></div>
+</div>
+<p>A unique pipe is purely a filter: it either passes the gremlin through
+unchanged or it tries to pull a new gremlin from the previous pipe.</p>
+<p>We initialize by trying to collect a gremlin. If the gremlin's current
+vertex is in our cache, then we've seen it before so we try to collect a
+new one. Otherwise, we add the gremlin's current vertex to our cache and
+pass it along. Easy peasy.</p>
+<p class="rubric" id="filter">Filter</p>
+<p>We've seen two simplistic ways of filtering, but sometimes we need more
+elaborate constraints. What if we want to find all of Thor's siblings
+whose weight is greater than their height <a class="reference external" href="#fn18">:sup:`18`</a>? This query would
+give us our answer:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+ <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">asgardian</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">asgardian</span><span class="o">.</span><span class="n">weight</span> <span class="o">&gt;</span> <span class="n">asgardian</span><span class="o">.</span><span class="n">height</span> <span class="p">})</span>
+ <span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If we want to know which of Thor's siblings survive Ragnarök we can pass
+filter an object:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">filter</span><span class="p">({</span><span class="n">survives</span><span class="p">:</span> <span class="n">true</span><span class="p">})</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here's how it works:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;filter&#39;, function(graph, args, gremlin, state) {
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+
+  if(typeof args[0] == &#39;object&#39;)                              // filter by object
+    return Dagoba.objectFilter(gremlin.vertex, args[0])
+         ? gremlin : &#39;pull&#39;
+
+  if(typeof args[0] != &#39;function&#39;) {
+    Dagoba.error(&#39;Filter is not a function: &#39; + args[0])
+    return gremlin                                            // keep things moving
+  }
+
+  if(!args[0](gremlin.vertex, gremlin)) return &#39;pull&#39;         // gremlin fails filter
+  return gremlin
+})
+</pre></div>
+</div>
+<p>If the filter's first argument is not an object or function then we
+trigger an error, and pass the gremlin along. Pause for a minute, and
+consider the alternatives. Why would we decide to continue the query
+once an error is encountered?</p>
+<p>There are two reasons this error might arise. The first involves a
+programmer typing in a query, either in a REPL or directly in code. When
+run, that query will produce results, and also generate a
+programmer-observable error. The programmer then corrects the error to
+further filter the set of results produced. Alternatively, the system
+could display only the error and produce no results, and fixing all
+errors would allow results to be displayed.</p>
+<p>The second possibility is that the filter is being applied dynamically
+at run time. This is a much more important case, because the person
+invoking the query is not necessarily the author of the query code.
+Because this is on the web, our default rule is to always show results,
+and to never break things. It is usually preferable to soldier on in the
+face of trouble rather than succumb to our wounds and present the user
+with a grisly error message.</p>
+<p>For those occasions when showing too few results is better than showing
+too many, <code class="docutils literal"><span class="pre">Dagoba.error</span></code> can be overridden to throw an error, thereby
+circumventing the natural control flow.</p>
+<p class="rubric" id="take">Take</p>
+<p>We don't always want all the results at once. Sometimes we only need a
+handful of results; say we want a dozen of Thor's contemporaries, so we
+walk all the way back to the primeval cow Auðumbla:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Without the <code class="docutils literal"><span class="pre">take</span></code> pipe that query could take quite a while to run,
+but thanks to our lazy evaluation strategy the query with the <code class="docutils literal"><span class="pre">take</span></code>
+pipe is very efficient.</p>
+<p>Sometimes we just want one at a time: we'll process the result, work
+with it, and then come back for another one. This pipetype allows us to
+do that as well.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Auðumbla&#39;</span><span class="p">)</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">property</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">q</span><span class="o">.</span><span class="n">run</span><span class="p">()</span> <span class="o">//</span> <span class="p">[</span><span class="s1">&#39;Odin&#39;</span><span class="p">]</span>
+<span class="n">q</span><span class="o">.</span><span class="n">run</span><span class="p">()</span> <span class="o">//</span> <span class="p">[</span><span class="s1">&#39;Vili&#39;</span><span class="p">]</span>
+<span class="n">q</span><span class="o">.</span><span class="n">run</span><span class="p">()</span> <span class="o">//</span> <span class="p">[</span><span class="s1">&#39;Vé&#39;</span><span class="p">]</span>
+<span class="n">q</span><span class="o">.</span><span class="n">run</span><span class="p">()</span> <span class="o">//</span> <span class="p">[]</span>
+</pre></div>
+</div>
+<p>Our query can function in an asynchronous environment, allowing us to
+collect more results as needed. When we run out, an empty array is
+returned.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;take&#39;, function(graph, args, gremlin, state) {
+  state.taken = state.taken || 0                              // state initialization
+
+  if(state.taken == args[0]) {
+    state.taken = 0
+    return &#39;done&#39;                                             // all done
+  }
+
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+  state.taken++
+  return gremlin
+})
+</pre></div>
+</div>
+<p>We initialize <code class="docutils literal"><span class="pre">state.taken</span></code> to zero if it doesn't already exist.
+JavaScript has implicit coercion, but coerces <code class="docutils literal"><span class="pre">undefined</span></code> into
+<code class="docutils literal"><span class="pre">NaN</span></code>, so we have to be explicit here <a class="reference external" href="#fn19">:sup:`19`</a>.</p>
+<p>Then when <code class="docutils literal"><span class="pre">state.taken</span></code> reaches <code class="docutils literal"><span class="pre">args[0]</span></code> we return 'done', sealing
+off the pipes before us. We also reset the <code class="docutils literal"><span class="pre">state.taken</span></code> counter,
+allowing us to repeat the query later.</p>
+<p>We do those two steps before query initialization to handle the cases of
+<code class="docutils literal"><span class="pre">take(0)</span></code> and <code class="docutils literal"><span class="pre">take()</span></code> <a class="reference external" href="#fn20">:sup:`20`</a>. Then we increment our counter
+and return the gremlin.</p>
+<p class="rubric" id="as">As</p>
+<p>These next four pipetypes work as a group to allow more advanced
+queries. This one just allows you to label the current vertex. We'll use
+that label with the next two pipetypes.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;as&#39;, function(graph, args, gremlin, state) {
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+  gremlin.state.as = gremlin.state.as || {}                   // init the &#39;as&#39; state
+  gremlin.state.as[args[0]] = gremlin.vertex                  // set label to vertex
+  return gremlin
+})
+</pre></div>
+</div>
+<p>After initializing the query, we ensure the gremlin's local state has an
+<code class="docutils literal"><span class="pre">as</span></code> parameter. Then we set a property of that parameter to the
+gremlin's current vertex.</p>
+<p class="rubric" id="merge">Merge</p>
+<p>Once we've labeled vertices we can extract them using merge. If we want
+Thor's parents, grandparents and great-grandparents we can do something
+like this:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;grandparent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;great-grandparent&#39;</span><span class="p">)</span>
+           <span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">,</span> <span class="s1">&#39;grandparent&#39;</span><span class="p">,</span> <span class="s1">&#39;great-grandparent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here's the merge pipetype:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;merge&#39;, function(graph, args, gremlin, state) {
+  if(!state.vertices &amp;&amp; !gremlin) return &#39;pull&#39;               // query initialization
+
+  if(!state.vertices || !state.vertices.length) {             // state initialization
+    var obj = (gremlin.state||{}).as || {}
+    state.vertices = args.map(function(id) {return obj[id]}).filter(Boolean)
+  }
+
+  if(!state.vertices.length) return &#39;pull&#39;                    // done with this batch
+
+  var vertex = state.vertices.pop()
+  return Dagoba.makeGremlin(vertex, gremlin.state)
+})
+</pre></div>
+</div>
+<p>We map over each argument, looking for it in the gremlin's list of
+labeled vertices. If we find it, we clone the gremlin to that vertex.
+Note that only gremlins that make it to this pipe are included in the
+merge—if Thor's mother's parents aren't in the graph, she won't be in
+the result set.</p>
+<p class="rubric" id="except">Except</p>
+<p>We've already seen cases where we would like to say &quot;Give me all Thor's
+siblings who are not Thor&quot;. We can do that with a filter:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+           <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">asgardian</span><span class="p">)</span> <span class="p">{</span><span class="k">return</span> <span class="n">asgardian</span><span class="o">.</span><span class="n">_id</span> <span class="o">!=</span> <span class="s1">&#39;Thor&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It's more straightforward with <code class="docutils literal"><span class="pre">as</span></code> and <code class="docutils literal"><span class="pre">except</span></code>:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;me&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="k">except</span><span class="p">(</span><span class="s1">&#39;me&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>But there are also queries that would be difficult to try to filter.
+What if we wanted Thor's uncles and aunts? How would we filter out his
+parents? It's easy with <code class="docutils literal"><span class="pre">as</span></code> and <code class="docutils literal"><span class="pre">except</span></code> <a class="reference external" href="#fn21">:sup:`21`</a>:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="k">except</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;except&#39;, function(graph, args, gremlin, state) {
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+  if(gremlin.vertex == gremlin.state.as[args[0]]) return &#39;pull&#39;
+  return gremlin
+})
+</pre></div>
+</div>
+<p>Here we're checking whether the current vertex is equal to the one we
+stored previously. If it is, we skip it.</p>
+<p class="rubric" id="back">Back</p>
+<p>Some of the questions we might ask involve checking further into the
+graph, only to return later to our point of origin if the answer is in
+the affirmative. Suppose we wanted to know which of Fjörgynn's daughters
+had children with one of Bestla's sons?</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Fjörgynn&#39;</span><span class="p">)</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;me&#39;</span><span class="p">)</span>       <span class="o">//</span> <span class="n">first</span> <span class="n">gremlin</span><span class="s1">&#39;s state.as is Frigg</span>
+ <span class="o">.</span><span class="ow">in</span><span class="p">()</span>                              <span class="o">//</span> <span class="n">first</span> <span class="n">gremlin</span><span class="s1">&#39;s vertex is now Baldr</span>
+ <span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span>                       <span class="o">//</span> <span class="n">clone</span> <span class="n">that</span> <span class="n">gremlin</span> <span class="k">for</span> <span class="n">each</span> <span class="n">grandparent</span>
+ <span class="o">.</span><span class="n">filter</span><span class="p">({</span><span class="n">_id</span><span class="p">:</span> <span class="s1">&#39;Bestla&#39;</span><span class="p">})</span>           <span class="o">//</span> <span class="n">keep</span> <span class="n">only</span> <span class="n">the</span> <span class="n">gremlin</span> <span class="n">on</span> <span class="n">grandparent</span> <span class="n">Bestla</span>
+ <span class="o">.</span><span class="n">back</span><span class="p">(</span><span class="s1">&#39;me&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>         <span class="o">//</span> <span class="n">jump</span> <span class="n">gremlin</span><span class="s1">&#39;s vertex back to Frigg and exit</span>
+</pre></div>
+</div>
+<p>Here's the definition for <code class="docutils literal"><span class="pre">back</span></code>:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.addPipetype(&#39;back&#39;, function(graph, args, gremlin, state) {
+  if(!gremlin) return &#39;pull&#39;                                  // query initialization
+  return Dagoba.gotoVertex(gremlin, gremlin.state.as[args[0]])
+})
+</pre></div>
+</div>
+<p>We're using the <code class="docutils literal"><span class="pre">Dagoba.gotoVertex</span></code> helper function to do all real
+work here. Let's take a look at that and some other helpers now.</p>
+<p class="rubric" id="helpers">Helpers</p>
+<p>The pipetypes above rely on a few helpers to do their jobs. Let's take a
+quick look at those before diving in to the interpreter.</p>
+<p class="rubric" id="gremlins">Gremlins</p>
+<p>Gremlins are simple creatures: they have a current vertex, and some
+local state. So to make a new one we just need to make an object with
+those two things.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">makeGremlin</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="p">{</span><span class="n">vertex</span><span class="p">:</span> <span class="n">vertex</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">state</span> <span class="o">||</span> <span class="p">{}</span> <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Any object that has a vertex property and a state property is a gremlin
+by this definition, so we could just inline the constructor, but
+wrapping it in a function allows us to add new properties to all
+gremlins in a single place.</p>
+<p>We can also take an existing gremlin and send it to a new vertex, as we
+saw in the <code class="docutils literal"><span class="pre">back</span></code> pipetype and the <code class="docutils literal"><span class="pre">simpleTraversal</span></code> function.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">gotoVertex</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">gremlin</span><span class="p">,</span> <span class="n">vertex</span><span class="p">)</span> <span class="p">{</span>               <span class="o">//</span> <span class="n">clone</span> <span class="n">the</span> <span class="n">gremlin</span>
+  <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">makeGremlin</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">gremlin</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Note that this function actually returns a brand new gremlin: a clone of
+the old one, sent to our desired destination. That means a gremlin can
+sit on a vertex while its clones are sent out to explore many other
+vertices. This is exactly what happens in <code class="docutils literal"><span class="pre">simpleTraversal</span></code>.</p>
+<p>As an example of possible enhancements, we could add a bit of state to
+keep track of every vertex the gremlin visits, and add new pipetypes to
+take advantage of those paths.</p>
+<p class="rubric" id="finding">Finding</p>
+<p>The <code class="docutils literal"><span class="pre">vertex</span></code> pipetype uses the <code class="docutils literal"><span class="pre">findVertices</span></code> function to collect a
+set of initial vertices from which to begin our query.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findVertices</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="p">{</span>                      <span class="o">//</span> <span class="n">vertex</span> <span class="n">finder</span> <span class="n">helper</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">typeof</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;object&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">searchVertices</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">length</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">slice</span><span class="p">()</span>                              <span class="o">//</span> <span class="n">OPT</span><span class="p">:</span> <span class="nb">slice</span> <span class="ow">is</span> <span class="n">costly</span>
+  <span class="k">else</span>
+    <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">findVerticesByIds</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This function receives its arguments as a list. If the first one is an
+object it passes it to <code class="docutils literal"><span class="pre">searchVertices</span></code>, allowing queries like:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">({</span><span class="n">_id</span><span class="p">:</span><span class="s1">&#39;Thor&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">({</span><span class="n">species</span><span class="p">:</span> <span class="s1">&#39;Aesir&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Otherwise, if there are arguments it gets passed to
+<code class="docutils literal"><span class="pre">findVerticesByIds</span></code>, which handles queries like
+<code class="docutils literal"><span class="pre">g.v('Thor',</span> <span class="pre">'Odin').run()</span></code>.</p>
+<p>If there are no arguments at all, then our query looks like
+<code class="docutils literal"><span class="pre">g.v().run()</span></code>. This isn't something you'll want to do frequently with
+large graphs, especially since we're slicing the vertex list before
+returning it. We slice because some call sites manipulate the returned
+list directly by popping items off as they work through them. We could
+optimize this use case by cloning at the call site, or by avoiding those
+manipulations. (We could keep a counter in state instead of popping.)</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.G.findVerticesByIds = function(ids) {
+  if(ids.length == 1) {
+    var maybe_vertex = this.findVertexById(ids[0])            // maybe it&#39;s a vertex
+    return maybe_vertex ? [maybe_vertex] : []                 // or maybe it isn&#39;t
+  }
+
+  return ids.map( this.findVertexById.bind(this) ).filter(Boolean)
+}
+
+Dagoba.G.findVertexById = function(vertex_id) {
+  return this.vertexIndex[vertex_id]
+}
+</pre></div>
+</div>
+<p>Note the use of <code class="docutils literal"><span class="pre">vertexIndex</span></code> here. Without that index we'd have to go
+through each vertex in our list one at a time to decide if it matched
+the ID—turning a constant time operation into a linear time one, and any
+\(O(n)\) operations that directly rely on it into \(O(n^2)\)
+operations.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">searchVertices</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="nb">filter</span><span class="p">)</span> <span class="p">{</span>        <span class="o">//</span> <span class="n">match</span> <span class="n">on</span> <span class="nb">filter</span><span class="s1">&#39;s properties</span>
+  <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">vertices</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">objectFilter</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="nb">filter</span><span class="p">)</span>
+  <span class="p">})</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">searchVertices</span></code> function uses the <code class="docutils literal"><span class="pre">objectFilter</span></code> helper on
+every vertex in the graph. We'll look at <code class="docutils literal"><span class="pre">objectFilter</span></code> in the next
+section, but in the meantime, can you think of a way to search through
+the vertices lazily?</p>
+<p class="rubric" id="filtering">Filtering</p>
+<p>We saw that <code class="docutils literal"><span class="pre">simpleTraversal</span></code> uses a filtering function on the edges
+it encounters. It's a simple function, but powerful enough for our
+purposes.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.filterEdges = function(filter) {
+  return function(edge) {
+    if(!filter)                                 // no filter: everything is valid
+      return true
+
+    if(typeof filter == &#39;string&#39;)               // string filter: label must match
+      return edge._label == filter
+
+    if(Array.isArray(filter))                   // array filter: must contain label
+      return !!~filter.indexOf(edge._label)
+
+    return Dagoba.objectFilter(edge, filter)    // object filter: check edge keys
+  }
+}
+</pre></div>
+</div>
+<p>The first case is no filter at all: <code class="docutils literal"><span class="pre">g.v('Odin').in().run()</span></code> traverses
+all edges to Odin.</p>
+<p>The second case filters on the edge's label:
+<code class="docutils literal"><span class="pre">g.v('Odin').in('parent').run()</span></code> traverses those edges with a label of
+'parent'.</p>
+<p>The third case accepts an array of labels:
+<code class="docutils literal"><span class="pre">g.v('Odin').in(['parent',</span> <span class="pre">'spouse']).run()</span></code> traverses both parent and
+spouse edges.</p>
+<p>And the fourth case uses the objectFilter function we saw before:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">objectFilter</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">thing</span><span class="p">,</span> <span class="nb">filter</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">for</span><span class="p">(</span><span class="n">var</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">)</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">thing</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">!==</span> <span class="nb">filter</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+      <span class="k">return</span> <span class="n">false</span>
+
+  <span class="k">return</span> <span class="n">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This allows us to query the edge using a filter object:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>`g.v(&#39;Odin&#39;).in({_label: &#39;spouse&#39;, order: 2}).run()`    // finds Odin&#39;s second wife
+</pre></div>
+</div>
+<p class="rubric" id="the-interpreters-nature">The Interpreter's Nature</p>
+<p>We've arrived at the top of the narrative mountain, ready to receive our
+prize: the interpreter. The code is actually fairly compact, but the
+model has a bit of subtlety.</p>
+<p>We compared programs to pipelines earlier, and that's a good mental
+model for writing queries. As we saw, though, we need a different model
+for the actual implementation. That model is more like a Turing machine
+than a pipeline: there's a read/write head that sits over a particular
+step. It &quot;reads&quot; the step, changes its &quot;state&quot;, and then moves either
+right or left.</p>
+<p>Reading the step means evaluating the pipetype function. As we saw
+above, each of those functions accepts as input the entire graph, its
+own arguments, maybe a gremlin, and its own local state. As output it
+provides a gremlin, false, or a signal of 'pull' or 'done'. This output
+is what our quasi-Turing machine reads in order to change the machine's
+state.</p>
+<p>That state comprises just two variables: one to record steps that are
+'done', and another to record the <code class="docutils literal"><span class="pre">results</span></code> of the query. Those are
+updated, and then either the machine head moves or the query finishes
+and the result is returned.</p>
+<p>We've now described all the state in our machine. We'll have a list of
+results that starts empty:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
+<p>An index of the last 'done' step that starts behind the first step:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">done</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p>We need a place to store the most recent step's output, which might be a
+gremlin—or it might be nothing—so we'll call it <code class="docutils literal"><span class="pre">maybe_gremlin</span></code>:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">maybe_gremlin</span> <span class="o">=</span> <span class="n">false</span>
+</pre></div>
+</div>
+<p>And finally we'll need a program counter to indicate the position of the
+read/write head.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">var</span> <span class="n">pc</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">program</span><span class="o">.</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Except... wait a second. How are we going to get lazy <a class="reference external" href="#fn22">:sup:`22`</a>? The
+traditional way of building a lazy system out of an eager one is to
+store parameters to function calls as &quot;thunks&quot; instead of evaluating
+them. You can think of a thunk as an unevaluated expression. In JS,
+which has first-class functions and closures, we can create a thunk by
+wrapping a function and its arguments in a new anonymous function which
+takes no arguments:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">function</span> <span class="nb">sum</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="p">[]</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">acc</span> <span class="o">+</span> <span class="p">(</span><span class="n">n</span><span class="o">|</span><span class="mi">0</span><span class="p">)</span> <span class="p">},</span> <span class="mi">0</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">function</span> <span class="n">thunk_of_sum_1_2_3</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="p">}</span>
+
+<span class="n">function</span> <span class="n">thunker</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span><span class="k">return</span> <span class="n">fun</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">args</span><span class="p">)}</span>
+<span class="p">}</span>
+
+<span class="n">function</span> <span class="n">thunk_wrapper</span><span class="p">(</span><span class="n">fun</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">thunker</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">null</span><span class="p">,</span> <span class="p">[</span><span class="n">fun</span><span class="p">]</span><span class="o">.</span><span class="n">concat</span><span class="p">([[]</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">arguments</span><span class="p">)]))</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nb">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>              <span class="o">//</span> <span class="o">-&gt;</span> <span class="mi">6</span>
+<span class="n">thunk_of_sum_1_2_3</span><span class="p">()</span>      <span class="o">//</span> <span class="o">-&gt;</span> <span class="mi">6</span>
+<span class="n">thunker</span><span class="p">(</span><span class="nb">sum</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])()</span> <span class="o">//</span> <span class="o">-&gt;</span> <span class="mi">6</span>
+
+<span class="n">var</span> <span class="n">sum2</span> <span class="o">=</span> <span class="n">thunk_wrapper</span><span class="p">(</span><span class="nb">sum</span><span class="p">)</span>
+<span class="n">var</span> <span class="n">thunk</span> <span class="o">=</span> <span class="n">sum2</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">thunk</span><span class="p">()</span>                   <span class="o">//</span> <span class="o">-&gt;</span> <span class="mi">6</span>
+</pre></div>
+</div>
+<p>None of the thunks are invoked until one is actually needed, which
+usually implies some type of output is required: in our case the result
+of a query. Each time the interpreter encounters a new function call, we
+wrap it in a thunk. Recall our original formulation of a query:
+<code class="docutils literal"><span class="pre">children(children(children(parents(parents(parents([8]))))))</span></code>. Each
+of those layers would be a thunk, wrapped up like an onion.</p>
+<p>There are a couple of tradeoffs with this approach: one is that spatial
+performance becomes more difficult to reason about, because of the
+potentially vast thunk graphs that can be created. Another is that our
+program is now expressed as a single thunk, and we can't do much with it
+at that point.</p>
+<p>This second point isn't usually an issue, because of the phase
+separation between when our compiler runs its optimizations and when all
+the thunking occurs at runtime. In our case we don't have that
+advantage: because we're using method chaining to implement a fluent
+interface <a class="reference external" href="#fn23">:sup:`23`</a> if we also use thunks to achieve laziness we
+would thunk each new method as it is called, which means by the time we
+get to <code class="docutils literal"><span class="pre">run()</span></code> we have only a thunk as our input, and no way to
+optimize our query.</p>
+<p>Interestingly, our fluent interface hides another difference between our
+query language and regular programming languages. The query
+<code class="docutils literal"><span class="pre">g.v('Thor').in().out().run()</span></code> could be rewritten as
+<code class="docutils literal"><span class="pre">run(out(in(v(g,</span> <span class="pre">'Thor'))))</span></code> if we weren't using method chaining. In
+JS we would first process <code class="docutils literal"><span class="pre">g</span></code> and <code class="docutils literal"><span class="pre">'Thor'</span></code>, then <code class="docutils literal"><span class="pre">v</span></code>, then <code class="docutils literal"><span class="pre">in</span></code>,
+<code class="docutils literal"><span class="pre">out</span></code> and <code class="docutils literal"><span class="pre">run</span></code>, working from the inside out. In a language with
+non-strict semantics we would work from the outside in, processing each
+consecutive nested layer of arguments only as needed.</p>
+<p>So if we start evaluating our query at the end of the statement, with
+<code class="docutils literal"><span class="pre">run</span></code>, and work our way back to <code class="docutils literal"><span class="pre">v('Thor')</span></code>, calculating results
+only as needed, then we've effectively achieved non-strictness. The
+secret is in the linearity of our queries. Branches complicate the
+process graph and also introduce opportunities for duplicate calls,
+which require memoization to avoid wasted work. The simplicity of our
+query language means we can implement an equally simple interpreter
+based on our linear read/write head model.</p>
+<p>In addition to allowing runtime optimizations, this style has many other
+benefits related to the ease of instrumentation: history, reversibility,
+stepwise debugging, query statistics. All these are easy to add
+dynamically because we control the interpreter and have left it as a
+virtual machine evaluator instead of reducing the program to a single
+thunk.</p>
+<p class="rubric" id="interpreter-unveiled">Interpreter, Unveiled</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">run</span> <span class="o">=</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span>                 <span class="o">//</span> <span class="n">a</span> <span class="n">machine</span> <span class="k">for</span> <span class="n">query</span> <span class="n">processing</span>
+
+  <span class="n">var</span> <span class="nb">max</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">program</span><span class="o">.</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span>         <span class="o">//</span> <span class="n">index</span> <span class="n">of</span> <span class="n">the</span> <span class="n">last</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">program</span>
+  <span class="n">var</span> <span class="n">maybe_gremlin</span> <span class="o">=</span> <span class="n">false</span>                 <span class="o">//</span> <span class="n">a</span> <span class="n">gremlin</span><span class="p">,</span> <span class="n">a</span> <span class="n">signal</span> <span class="n">string</span><span class="p">,</span> <span class="ow">or</span> <span class="n">false</span>
+  <span class="n">var</span> <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>                          <span class="o">//</span> <span class="n">results</span> <span class="k">for</span> <span class="n">this</span> <span class="n">particular</span> <span class="n">run</span>
+  <span class="n">var</span> <span class="n">done</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>                             <span class="o">//</span> <span class="n">behindwhich</span> <span class="n">things</span> <span class="n">have</span> <span class="n">finished</span>
+  <span class="n">var</span> <span class="n">pc</span> <span class="o">=</span> <span class="nb">max</span>                              <span class="o">//</span> <span class="n">our</span> <span class="n">program</span> <span class="n">counter</span>
+
+  <span class="n">var</span> <span class="n">step</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">pipetype</span>
+
+  <span class="k">while</span><span class="p">(</span><span class="n">done</span> <span class="o">&lt;</span> <span class="nb">max</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">var</span> <span class="n">ts</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">state</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">program</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span>                 <span class="o">//</span> <span class="n">step</span> <span class="ow">is</span> <span class="n">a</span> <span class="n">pair</span> <span class="n">of</span> <span class="n">pipetype</span> <span class="ow">and</span> <span class="n">args</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="p">(</span><span class="n">ts</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">=</span> <span class="n">ts</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">||</span> <span class="p">{})</span>         <span class="o">//</span> <span class="n">this</span> <span class="n">step</span><span class="s1">&#39;s state must be an object</span>
+    <span class="n">pipetype</span> <span class="o">=</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">getPipetype</span><span class="p">(</span><span class="n">step</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="o">//</span> <span class="n">a</span> <span class="n">pipetype</span> <span class="ow">is</span> <span class="n">just</span> <span class="n">a</span> <span class="n">function</span>
+</pre></div>
+</div>
+<p>Here <code class="docutils literal"><span class="pre">max</span></code> is just a constant, and <code class="docutils literal"><span class="pre">step</span></code>, <code class="docutils literal"><span class="pre">state</span></code>, and
+<code class="docutils literal"><span class="pre">pipetype</span></code> cache information about the current step. We've entered the
+driver loop, and we won't stop until the last step is done.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">maybe_gremlin</span> <span class="o">=</span> <span class="n">pipetype</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">step</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maybe_gremlin</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Calling the step's pipetype function with its arguments.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span><span class="p">(</span><span class="n">maybe_gremlin</span> <span class="o">==</span> <span class="s1">&#39;pull&#39;</span><span class="p">)</span> <span class="p">{</span>           <span class="o">//</span> <span class="s1">&#39;pull&#39;</span> <span class="n">means</span> <span class="n">the</span> <span class="n">pipe</span> <span class="n">wants</span> <span class="n">more</span> <span class="nb">input</span>
+  <span class="n">maybe_gremlin</span> <span class="o">=</span> <span class="n">false</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">pc</span><span class="o">-</span><span class="mi">1</span> <span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">pc</span><span class="o">--</span>                                <span class="o">//</span> <span class="k">try</span> <span class="n">the</span> <span class="n">previous</span> <span class="n">pipe</span>
+    <span class="k">continue</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="n">pc</span>                           <span class="o">//</span> <span class="n">previous</span> <span class="n">pipe</span> <span class="ow">is</span> <span class="n">done</span><span class="p">,</span> <span class="n">so</span> <span class="n">we</span> <span class="n">are</span> <span class="n">too</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>To handle the 'pull' case we first set <code class="docutils literal"><span class="pre">maybe_gremlin</span></code> <a class="reference external" href="#fn24">:sup:`24`</a> to
+false. We're overloading our 'maybe' here by using it as a channel to
+pass the 'pull' and 'done' signals, but once one of those signals is
+sucked out we go back to thinking of this as a proper 'maybe'.</p>
+<p>If the step before us isn't 'done' <a class="reference external" href="#fn25">:sup:`25`</a> we'll move the head
+backward and try again. Otherwise, we mark ourselves as 'done' and let
+the head naturally fall forward.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="k">if</span><span class="p">(</span><span class="n">maybe_gremlin</span> <span class="o">==</span> <span class="s1">&#39;done&#39;</span><span class="p">)</span> <span class="p">{</span>           <span class="o">//</span> <span class="s1">&#39;done&#39;</span> <span class="n">tells</span> <span class="n">us</span> <span class="n">the</span> <span class="n">pipe</span> <span class="ow">is</span> <span class="n">finished</span>
+  <span class="n">maybe_gremlin</span> <span class="o">=</span> <span class="n">false</span>
+  <span class="n">done</span> <span class="o">=</span> <span class="n">pc</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Handling the 'done' case is even easier: set <code class="docutils literal"><span class="pre">maybe_gremlin</span></code> to false
+and mark this step as 'done'.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>  <span class="n">pc</span><span class="o">++</span>                                    <span class="o">//</span> <span class="n">move</span> <span class="n">on</span> <span class="n">to</span> <span class="n">the</span> <span class="nb">next</span> <span class="n">pipe</span>
+
+  <span class="k">if</span><span class="p">(</span><span class="n">pc</span> <span class="o">&gt;</span> <span class="nb">max</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">maybe_gremlin</span><span class="p">)</span>
+      <span class="n">results</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">maybe_gremlin</span><span class="p">)</span>         <span class="o">//</span> <span class="n">a</span> <span class="n">gremlin</span> <span class="n">popped</span> <span class="n">out</span> <span class="n">of</span> <span class="n">the</span> <span class="n">pipeline</span>
+    <span class="n">maybe_gremlin</span> <span class="o">=</span> <span class="n">false</span>
+    <span class="n">pc</span><span class="o">--</span>                                  <span class="o">//</span> <span class="n">take</span> <span class="n">a</span> <span class="n">step</span> <span class="n">back</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We're done with the current step, and we've moved the head to the next
+one. If we're at the end of the program and <code class="docutils literal"><span class="pre">maybe_gremlin</span></code> contains a
+gremlin, we'll add it to the results, set <code class="docutils literal"><span class="pre">maybe_gremlin</span></code> to false and
+move the head back to the last step in the program.</p>
+<p>This is also the initialization state, since <code class="docutils literal"><span class="pre">pc</span></code> starts as <code class="docutils literal"><span class="pre">max</span></code>.
+So we start here and work our way back, and end up here again at least
+once for each final result the query returns.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>  results = results.map(function(gremlin) { // return projected results, or vertices
+    return gremlin.result != null
+         ? gremlin.result : gremlin.vertex } )
+
+  return results
+}
+</pre></div>
+</div>
+<p>We're out of the driver loop now: the query has ended, the results are
+in, and we just need to process and return them. If any gremlin has its
+result set we'll return that, otherwise we'll return the gremlin's final
+vertex. Are there other things we might want to return? What are the
+tradeoffs here?</p>
+<p class="rubric" id="query-transformers">Query Transformers</p>
+<p>Now we have a nice compact interpreter for our query programs, but we're
+still missing something. Every modern DBMS comes with a query optimizer
+as an essential part of the system. For non-relational databases,
+optimizing our query plan rarely yields the exponential speedups seen in
+their relational cousins <a class="reference external" href="#fn26">:sup:`26`</a>, but it's still an important
+aspect of database design.</p>
+<p>What's the simplest thing we could do that could reasonably be called a
+query optimizer? Well, we could write little functions for transforming
+our query programs before we run them. We'll pass a program in as input
+and get a different program back out as output.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="p">[]</span>                               <span class="o">//</span> <span class="n">transformers</span> <span class="p">(</span><span class="n">more</span> <span class="n">than</span> <span class="n">meets</span> <span class="n">the</span> <span class="n">eye</span><span class="p">)</span>
+
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addTransformer</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">priority</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">typeof</span> <span class="n">fun</span> <span class="o">!=</span> <span class="s1">&#39;function&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Invalid transformer function&#39;</span><span class="p">)</span>
+
+  <span class="k">for</span><span class="p">(</span><span class="n">var</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">length</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>  <span class="o">//</span> <span class="n">OPT</span><span class="p">:</span> <span class="n">binary</span> <span class="n">search</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">priority</span> <span class="o">&gt;</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">priority</span><span class="p">)</span> <span class="k">break</span>
+
+  <span class="n">Dagoba</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">splice</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">{</span><span class="n">priority</span><span class="p">:</span> <span class="n">priority</span><span class="p">,</span> <span class="n">fun</span><span class="p">:</span> <span class="n">fun</span><span class="p">})</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now we can add query transformers to our system. A query transformer is
+a function that accepts a program and returns a program, plus a priority
+level. Higher priority transformers are placed closer to the front of
+the list. We're ensuring <code class="docutils literal"><span class="pre">fun</span></code> is a function, because we're going to
+evaluate it later <a class="reference external" href="#fn27">:sup:`27`</a>.</p>
+<p>We'll assume there won't be an enormous number of transformer additions,
+and walk the list linearly to add a new one. We'll leave a note in case
+this assumption turns out to be false—a binary search is much more
+time-optimal for long lists, but adds a little complexity and doesn't
+really speed up short lists.</p>
+<p>To run these transformers we're going to inject a single line of code in
+to the top of our interpreter:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">run</span> <span class="o">=</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span>                     <span class="o">//</span> <span class="n">our</span> <span class="n">virtual</span> <span class="n">machine</span> <span class="k">for</span> <span class="n">querying</span>
+  <span class="n">this</span><span class="o">.</span><span class="n">program</span> <span class="o">=</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">program</span><span class="p">)</span> <span class="o">//</span> <span class="n">activate</span> <span class="n">the</span> <span class="n">transformers</span>
+</pre></div>
+</div>
+<p>We'll use that to call this function, which just passes our program
+through each transformer in turn:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">program</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">transformer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">transformer</span><span class="o">.</span><span class="n">fun</span><span class="p">(</span><span class="n">acc</span><span class="p">)</span>
+  <span class="p">},</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Up until this point, our engine has traded simplicity for performance,
+but one of the nice things about this strategy is that it leaves doors
+open for global optimizations that may have been unavailable if we had
+opted to optimize locally as we designed the system.</p>
+<p>Optimizing a program can often increase complexity and reduce the
+elegance of the system, making it harder to reason about and maintain.
+Breaking abstraction barriers for performance gains is one of the more
+egregious forms of optimization, but even something seemingly innocuous
+like embedding performance-oriented code into business logic makes
+maintenance more difficult.</p>
+<p>In light of that, this type of &quot;orthogonal optimization&quot; is particularly
+appealing. We can add optimizers in modules or even user code, instead
+of having them tightly coupled to the engine. We can test them in
+isolation, or in groups, and with the addition of generative testing we
+could even automate that process, ensuring that our available optimizers
+play nicely together.</p>
+<p>We can also use this transformer system to add new functionality
+unrelated to optimization. Let's look at a case of that now.</p>
+<p class="rubric" id="aliases">Aliases</p>
+<p>Making a query like <code class="docutils literal"><span class="pre">g.v('Thor').out().in()</span></code> is quite compact, but is
+this Thor's siblings or his mates? Neither interpretation is fully
+satisfying. It'd be nicer to say what mean: either
+<code class="docutils literal"><span class="pre">g.v('Thor').parents().children()</span></code> or
+<code class="docutils literal"><span class="pre">g.v('Thor').children().parents()</span></code>.</p>
+<p>We can use query transformers to make aliases with just a couple of
+extra helper functions:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">newname</span><span class="p">,</span> <span class="n">oldname</span><span class="p">,</span> <span class="n">defaults</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span> <span class="o">||</span> <span class="p">[]</span>                     <span class="o">//</span> <span class="n">default</span> <span class="n">arguments</span> <span class="k">for</span> <span class="n">the</span> <span class="n">alias</span>
+  <span class="n">Dagoba</span><span class="o">.</span><span class="n">addTransformer</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">program</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">program</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">step</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span><span class="p">(</span><span class="n">step</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">newname</span><span class="p">)</span> <span class="k">return</span> <span class="n">step</span>
+      <span class="k">return</span> <span class="p">[</span><span class="n">oldname</span><span class="p">,</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">step</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">defaults</span><span class="p">)]</span>
+    <span class="p">})</span>
+    <span class="p">},</span> <span class="mi">100</span><span class="p">)</span>                                     <span class="o">//</span> <span class="mi">100</span> <span class="n">because</span> <span class="n">aliases</span> <span class="n">run</span> <span class="n">early</span>
+
+  <span class="n">Dagoba</span><span class="o">.</span><span class="n">addPipetype</span><span class="p">(</span><span class="n">newname</span><span class="p">,</span> <span class="n">function</span><span class="p">()</span> <span class="p">{})</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We're adding a new name for an existing step, so we'll need to create a
+query transformer that converts the new name to the old name whenever
+it's encountered. We'll also need to add the new name as a method on the
+main query object, so it can be pulled into the query program.</p>
+<p>If we could capture missing method calls and route them to a handler
+function then we might be able to run this transformer with a lower
+priority, but there's currently no way to do that. Instead we will run
+it with a high priority of 100 so the aliased methods are added before
+they are invoked.</p>
+<p>We call another helper to merge the incoming step's arguments with the
+alias's default arguments. If the incoming step is missing an argument
+then we'll use the alias's argument for that slot.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">extend</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">defaults</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="n">Object</span><span class="o">.</span><span class="n">keys</span><span class="p">(</span><span class="n">defaults</span><span class="p">)</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">typeof</span> <span class="nb">list</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;undefined&#39;</span><span class="p">)</span> <span class="k">return</span> <span class="n">acc</span>
+    <span class="n">acc</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">acc</span>
+  <span class="p">},</span> <span class="nb">list</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now we can make those aliases we wanted:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;parents&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">)</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;children&#39;</span><span class="p">,</span> <span class="s1">&#39;in&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can also start to specialize our data model a little more, by
+labeling each edge between a parent and child as a 'parent' edge. Then
+our aliases would look like this:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;parents&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;parent&#39;</span><span class="p">])</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;children&#39;</span><span class="p">,</span> <span class="s1">&#39;in&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;parent&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Now we can add edges for spouses, step-parents, or even jilted
+ex-lovers. If we enhance our <code class="docutils literal"><span class="pre">addAlias</span></code> function we can introduce new
+aliases for grandparents, siblings, or even cousins:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;grandparents&#39;</span><span class="p">,</span> <span class="p">[</span> <span class="p">[</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">]])</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;siblings&#39;</span><span class="p">,</span>     <span class="p">[</span> <span class="p">[</span><span class="s1">&#39;as&#39;</span><span class="p">,</span> <span class="s1">&#39;me&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">]</span>
+                                <span class="p">,</span> <span class="p">[</span><span class="s1">&#39;in&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;except&#39;</span><span class="p">,</span> <span class="s1">&#39;me&#39;</span><span class="p">]])</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;cousins&#39;</span><span class="p">,</span>      <span class="p">[</span> <span class="p">[</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;as&#39;</span><span class="p">,</span> <span class="s1">&#39;folks&#39;</span><span class="p">]</span>
+                                <span class="p">,</span> <span class="p">[</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;in&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">]</span>
+                                <span class="p">,</span> <span class="p">[</span><span class="s1">&#39;except&#39;</span><span class="p">,</span> <span class="s1">&#39;folks&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;in&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">]</span>
+                                <span class="p">,</span> <span class="p">[</span><span class="s1">&#39;unique&#39;</span><span class="p">]])</span>
+</pre></div>
+</div>
+<p>That <code class="docutils literal"><span class="pre">cousins</span></code> alias is kind of cumbersome. Maybe we could expand our
+<code class="docutils literal"><span class="pre">addAlias</span></code> function to allow ourselves to use other aliases in our
+aliases, and call it like this:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">addAlias</span><span class="p">(</span><span class="s1">&#39;cousins&#39;</span><span class="p">,</span>      <span class="p">[</span> <span class="s1">&#39;parents&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;as&#39;</span><span class="p">,</span> <span class="s1">&#39;folks&#39;</span><span class="p">]</span>
+                                <span class="p">,</span> <span class="s1">&#39;parents&#39;</span><span class="p">,</span> <span class="s1">&#39;children&#39;</span>
+                                <span class="p">,</span> <span class="p">[</span><span class="s1">&#39;except&#39;</span><span class="p">,</span> <span class="s1">&#39;folks&#39;</span><span class="p">],</span> <span class="s1">&#39;children&#39;</span><span class="p">,</span> <span class="s1">&#39;unique&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Now instead of</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Forseti&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">parents</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;parents&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">parents</span><span class="p">()</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>
+                        <span class="o">.</span><span class="k">except</span><span class="p">(</span><span class="s1">&#39;parents&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">children</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>we can just say <code class="docutils literal"><span class="pre">g.v('Forseti').cousins()</span></code>.</p>
+<p>We've introduced a bit of a pickle, though: while our <code class="docutils literal"><span class="pre">addAlias</span></code>
+function is resolving an alias it also has to resolve other aliases.
+What if <code class="docutils literal"><span class="pre">parents</span></code> called some other alias, and while we were resolving
+<code class="docutils literal"><span class="pre">cousins</span></code> we had to stop to resolve <code class="docutils literal"><span class="pre">parents</span></code> and then resolve its
+aliases and so on? What if one of <code class="docutils literal"><span class="pre">parents</span></code> aliases ultimately called
+<code class="docutils literal"><span class="pre">cousins</span></code>?</p>
+<p>This brings us in to the realm of dependency resolution<a class="reference external" href="#fn28">:sup:`28`</a>, a
+core component of modern package managers. There are a lot of fancy
+tricks for choosing ideal versions, tree shaking, general optimizations
+and the like, but the basic idea is fairly simple. We're going to make a
+graph of all the dependencies and their relationships, and then try to
+find a way to line up the vertices while making all the arrows go from
+left to right. If we can, then this particular sorting of the vertices
+is called a 'topological ordering', and we've proven that our dependency
+graph has no cycles: it is a Directed Acyclic Graph (DAG). If we fail to
+do so then our graph has at least one cycle.</p>
+<p>On the other hand, we expect that our queries will generally be rather
+short (100 steps would be a very long query) and that we'll have a
+reasonably low number of transformers. Instead of fiddling around with
+DAGs and dependency management we could return 'true' from the transform
+function if anything changed, and then run it until it stops being
+productive. This requires each transformer to be idempotent, but that's
+a useful property for transformers to have. What are the pros and cons
+of these two pathways?</p>
+<p class="rubric" id="performance">Performance</p>
+<p>All production graph databases share a particular performance
+characteristic: graph traversal queries are constant time with respect
+to total graph size <a class="reference external" href="#fn29">:sup:`29`</a>. In a non-graph database, asking for
+the list of someone's friends can require time proportional to the
+number of entries, because in the naive worst-case you have to look at
+every entry. This means if a query over ten entries takes a millisecond,
+then a query over ten million entries will take almost two weeks. Your
+friend list would arrive faster if sent by Pony Express <a class="reference external" href="#fn30">:sup:`30`</a>!</p>
+<p>To alleviate this dismal performance most databases index over
+oft-queried fields, which turns an \(O(n)\) search into an \(O(log
+n)\) search. This gives considerably better search performance, but at
+the cost of some write performance and a lot of space—indices can easily
+double the size of a database. Careful balancing of the space/time
+tradeoffs of indices is part of the perpetual tuning process for most
+databases.</p>
+<p>Graph databases sidestep this issue by making direct connections between
+vertices and edges, so graph traversals are just pointer jumps; no need
+to scan through every item, no need for indices, no extra work at all.
+Now finding your friends has the same price regardless of the total
+number of people in the graph, with no additional space cost or write
+time cost. One downside to this approach is that the pointers work best
+when the whole graph is in memory on the same machine. Effectively
+sharding a graph database across multiple machines is still an active
+area of research <a class="reference external" href="#fn31">:sup:`31`</a>.</p>
+<p>We can see this at work in the microcosm of Dagoba if we replace the
+functions for finding edges. Here's a naive version that searches
+through all the edges in linear time. It's similar to our very first
+implementation, but uses all the structures we've since built.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findInEdges</span>  <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">edge</span><span class="p">)</span> <span class="p">{</span><span class="k">return</span> <span class="n">edge</span><span class="o">.</span><span class="n">_in</span><span class="o">.</span><span class="n">_id</span>  <span class="o">==</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_id</span><span class="p">}</span> <span class="p">)</span>
+<span class="p">}</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findOutEdges</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">edges</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">edge</span><span class="p">)</span> <span class="p">{</span><span class="k">return</span> <span class="n">edge</span><span class="o">.</span><span class="n">_out</span><span class="o">.</span><span class="n">_id</span> <span class="o">==</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_id</span><span class="p">}</span> <span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We can add an index for edges, which gets us most of the way there with
+small graphs but has all the classic indexing issues for large ones.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findInEdges</span>  <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">inEdgeIndex</span> <span class="p">[</span><span class="n">vertex</span><span class="o">.</span><span class="n">_id</span><span class="p">]</span> <span class="p">}</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findOutEdges</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">this</span><span class="o">.</span><span class="n">outEdgeIndex</span><span class="p">[</span><span class="n">vertex</span><span class="o">.</span><span class="n">_id</span><span class="p">]</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>And here we have our old friends back again: pure, sweet index-free
+adjacency.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findInEdges</span>  <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_in</span>  <span class="p">}</span>
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">findOutEdges</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">vertex</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">vertex</span><span class="o">.</span><span class="n">_out</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>Run these yourself to experience the graph database difference
+<a class="reference external" href="#fn32">:sup:`32`</a>.</p>
+<p class="rubric" id="serialization">Serialization</p>
+<p>Having a graph in memory is great, but how do we get it there in the
+first place? We saw that our graph constructor can take a list of
+vertices and edges and create a graph for us, but once the graph has
+been built how do we get the vertices and edges back out?</p>
+<p>Our natural inclination is to do something like
+<code class="docutils literal"><span class="pre">JSON.stringify(graph)</span></code>, which produces the terribly helpful error
+&quot;TypeError: Converting circular structure to JSON&quot;. During the graph
+construction process the vertices were linked to their edges, and the
+edges are all linked to their vertices, so now everything refers to
+everything else. So how can we extract our nice neat lists again? JSON
+replacer functions to the rescue.</p>
+<p>The <code class="docutils literal"><span class="pre">JSON.stringify</span></code> function takes a value to stringify, but it also
+takes two additional parameters: a replacer function and a whitespace
+number <a class="reference external" href="#fn33">:sup:`33`</a>. The replacer allows you to customize how the
+stringification proceeds.</p>
+<p>We need to treat the vertices and edges a bit differently, so we're
+going to manually merge the two sides into a single JSON string.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">jsonify</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="s1">&#39;{&quot;V&quot;:&#39;</span> <span class="o">+</span> <span class="n">JSON</span><span class="o">.</span><span class="n">stringify</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">vertices</span><span class="p">,</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">cleanVertex</span><span class="p">)</span>
+       <span class="o">+</span> <span class="s1">&#39;,&quot;E&quot;:&#39;</span> <span class="o">+</span> <span class="n">JSON</span><span class="o">.</span><span class="n">stringify</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">,</span>    <span class="n">Dagoba</span><span class="o">.</span><span class="n">cleanEdge</span><span class="p">)</span>
+       <span class="o">+</span> <span class="s1">&#39;}&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And these are the replacers for vertices and edges.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>Dagoba.cleanVertex = function(key, value) {
+  return (key == &#39;_in&#39; || key == &#39;_out&#39;) ? undefined : value
+}
+
+Dagoba.cleanEdge = function(key, value) {
+  return (key == &#39;_in&#39; || key == &#39;_out&#39;) ? value._id : value
+}
+</pre></div>
+</div>
+<p>The only difference between them is what they do when a cycle is about
+to be formed: for vertices, we skip the edge list entirely. For edges,
+we replace each vertex with its ID. That gets rid of all the cycles we
+created while building the graph.</p>
+<p>We're manually manipulating JSON in <code class="docutils literal"><span class="pre">Dagoba.jsonify</span></code>, which generally
+isn't recommended as the JSON format is rather persnickety. Even in a
+dose this small it's easy to miss something and hard to visually confirm
+correctness.</p>
+<p>We could merge the two replacer functions into a single function, and
+use that new replacer function over the whole graph by doing
+<code class="docutils literal"><span class="pre">JSON.stringify(graph,</span> <span class="pre">my_cool_replacer)</span></code>. This frees us from having
+to manually massage the JSON output, but the resulting code may be quite
+a bit messier. Try it yourself and see if you can come up with a
+well-factored solution that avoids hand-coded JSON. (Bonus points if it
+fits in a tweet.)</p>
+<p class="rubric" id="persistence">Persistence</p>
+<p>Persistence is usually one of the trickier parts of a database: disks
+are relatively safe but slow. Batching writes, making them atomic,
+journaling—these are difficult to make both fast and correct.</p>
+<p>Fortunately, we're building an <em>in-memory</em> database, so we don't have to
+worry about any of that! We may, though, occasionally want to save a
+copy of the database locally for fast restart on page load. We can use
+the serializer we just built to do exactly that. First let's wrap it in
+a helper function:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">toString</span> <span class="o">=</span> <span class="n">function</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">jsonify</span><span class="p">(</span><span class="n">this</span><span class="p">)</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>In JavaScript an object's <code class="docutils literal"><span class="pre">toString</span></code> function is called whenever that
+object is coerced into a string. So if <code class="docutils literal"><span class="pre">g</span></code> is a graph, then <code class="docutils literal"><span class="pre">g+''</span></code>
+will be the graph's serialized JSON string.</p>
+<p>The <code class="docutils literal"><span class="pre">fromString</span></code> function isn't part of the language specification,
+but it's handy to have around.</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">fromString</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="p">{</span>             <span class="o">//</span> <span class="n">another</span> <span class="n">graph</span> <span class="n">constructor</span>
+  <span class="n">var</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">JSON</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>                     <span class="o">//</span> <span class="n">this</span> <span class="n">can</span> <span class="n">throw</span>
+  <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">graph</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">V</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">E</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now we'll use those in our persistence functions. The <code class="docutils literal"><span class="pre">toString</span></code>
+function is hiding—can you spot it?</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">Dagoba</span><span class="o">.</span><span class="n">persist</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="o">||</span> <span class="s1">&#39;graph&#39;</span>
+  <span class="n">localStorage</span><span class="o">.</span><span class="n">setItem</span><span class="p">(</span><span class="s1">&#39;DAGOBA::&#39;</span><span class="o">+</span><span class="n">name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">Dagoba</span><span class="o">.</span><span class="n">depersist</span> <span class="o">=</span> <span class="n">function</span> <span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;DAGOBA::&#39;</span> <span class="o">+</span> <span class="p">(</span><span class="n">name</span> <span class="o">||</span> <span class="s1">&#39;graph&#39;</span><span class="p">)</span>
+  <span class="n">var</span> <span class="n">flatgraph</span> <span class="o">=</span> <span class="n">localStorage</span><span class="o">.</span><span class="n">getItem</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">Dagoba</span><span class="o">.</span><span class="n">fromString</span><span class="p">(</span><span class="n">flatgraph</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We preface the name with a faux namespace to avoid polluting the
+<code class="docutils literal"><span class="pre">localStorage</span></code> properties of the domain, as it can get quite crowded
+in there. There's also usually a low storage limit, so for larger graphs
+we'd probably want to use a Blob of some sort.</p>
+<p>There are also potential issues if multiple browser windows from the
+same domain are persisting and depersisting simultaneously. The
+<code class="docutils literal"><span class="pre">localStorage</span></code> space is shared between those windows, and they're
+potentially on different event loops, so there's the possibility of one
+carelessly overwriting the work of another. The spec says there should
+be a mutex required for read/write access to <code class="docutils literal"><span class="pre">localStorage</span></code>, but it's
+inconsistently implemented between different browsers, and even with it
+a simple implementation like ours could still encounter issues.</p>
+<p>If we wanted our persistence implementation to be
+multi-window–concurrency aware, then we could make use of the storage
+events that are fired when <code class="docutils literal"><span class="pre">localStorage</span></code> is changed to update our
+local graph accordingly.</p>
+<p class="rubric" id="updates">Updates</p>
+<p>Our <code class="docutils literal"><span class="pre">out</span></code> pipetype copies the vertex's out-going edges and pops one
+off each time it needs one. Building that new data structure takes time
+and space, and pushes more work on to the memory manager. We could have
+instead used the vertex's out-going edge list directly, keeping track of
+our place with a counter variable. Can you think of a problem with that
+approach?</p>
+<p>If someone deletes an edge we've visited while we're in the middle of a
+query, that would change the size of our edge list, and we'd then skip
+an edge because our counter would be off. To solve this we could lock
+the vertices involved in our query, but then we'd either lose our
+capacity to regularly update the graph, or the ability to have
+long-lived query objects responding to requests for more results
+on-demand. Even though we're in a single-threaded event loop, our
+queries can span multiple asynchronous re-entries, which means
+concurrency concerns like this are a very real problem.</p>
+<p>So we'll pay the performance price to copy the edge list. There's still
+a problem, though, in that long-lived queries may not see a completely
+consistent chronology. We will traverse every edge belonging to a vertex
+at the moment we visit it, but we visit vertices at different clock
+times during our query. Suppose we save a query like
+<code class="docutils literal"><span class="pre">var</span> <span class="pre">q</span> <span class="pre">=</span> <span class="pre">g.v('Odin').children().children().take(2)</span></code> and then call
+<code class="docutils literal"><span class="pre">q.run()</span></code> to gather two of Odin's grandchildren. Some time later we
+need to pull another two grandchildren, so we call <code class="docutils literal"><span class="pre">q.run()</span></code> again. If
+Odin has had a new grandchild in the intervening time, we may or may not
+see it, depending on whether the parent vertex was visited the first
+time we ran the query.</p>
+<p>One way to fix this non-determinism is to change the update handlers to
+add versioning to the data. We'll then change the driver loop to pass
+the graph's current version in to the query, so we're always seeing a
+consistent view of the world as it existed when the query was first
+initialized. Adding versioning to our database also opens the door to
+true transactions, and automated rollback/retries in an STM-like
+fashion.</p>
+<p class="rubric" id="future-directions">Future Directions</p>
+<p>We saw one way of gathering ancestors earlier:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;parent&#39;</span><span class="p">)</span>
+           <span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;grandparent&#39;</span><span class="p">)</span>
+           <span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="k">as</span><span class="p">(</span><span class="s1">&#39;great-grandparent&#39;</span><span class="p">)</span>
+           <span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="s1">&#39;parent&#39;</span><span class="p">,</span> <span class="s1">&#39;grandparent&#39;</span><span class="p">,</span> <span class="s1">&#39;great-grandparent&#39;</span><span class="p">])</span>
+           <span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This is pretty clumsy, and doesn't scale well—what if we wanted six
+layers of ancestors? Or to look through an arbitrary number of ancestors
+until we found what we wanted?</p>
+<p>It'd be nice if we could say something like this instead:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>What we'd like to get out of this is something like the query
+above—maybe:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span>g.v(&#39;Thor&#39;).out().as(&#39;a&#39;)
+           .out().as(&#39;b&#39;)
+           .out().as(&#39;c&#39;)
+           .merge([&#39;a&#39;, &#39;b&#39;, &#39;c&#39;])
+           .run()`
+</pre></div>
+</div>
+<p>after the query transformers have all run. We could run the <code class="docutils literal"><span class="pre">times</span></code>
+transformer first, to produce:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Thor&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">out</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Then run the <code class="docutils literal"><span class="pre">all</span></code> transformer and have it transform each <code class="docutils literal"><span class="pre">all</span></code> into
+a uniquely labeled <code class="docutils literal"><span class="pre">as</span></code>, and put a <code class="docutils literal"><span class="pre">merge</span></code> after the last <code class="docutils literal"><span class="pre">as</span></code>.</p>
+<p>There are a few problems with this, though. For one, this
+<code class="docutils literal"><span class="pre">as</span></code>/<code class="docutils literal"><span class="pre">merge</span></code> technique only works if every pathway is present in the
+graph: if we're missing an entry for one of Thor's great-grandparents
+then we will skip valid entries. For another, what happens if we want to
+do this to just part of a query and not the whole thing? What if there
+are multiple <code class="docutils literal"><span class="pre">all</span></code>s?</p>
+<p>To solve that first problem we're going to have to treat <code class="docutils literal"><span class="pre">all</span></code>s as
+something more than just as/merge. We need each parent gremlin to
+actually skip the intervening steps. We can think of this as a kind of
+teleportation—jumping from one part of the pipeline directly to
+another—or we can think of it as a certain kind of branching pipeline,
+but either way it complicates our model somewhat. Another approach would
+be to think of the gremlin as passing through the intervening pipes in a
+sort of suspended animation, until awoken by a special pipe. Scoping the
+suspending/unsuspending pipes may be tricky, however.</p>
+<p>The next two problems are easier. To modify just part of a query we'll
+wrap that portion in special start/end steps, like
+<code class="docutils literal"><span class="pre">g.v('Thor').out().start().in().out().end().times(4).run()</span></code>. Actually,
+if the interpreter knows about these special pipetypes we don't need the
+end step, because the end of a sequence is always a special pipetype.
+We'll call these special pipetypes &quot;adverbs&quot;, because they modify
+regular pipetypes like adverbs modify verbs.</p>
+<p>To handle multiple <code class="docutils literal"><span class="pre">all</span></code>s we need to run all <code class="docutils literal"><span class="pre">all</span></code> transformers
+twice: once before <code class="docutils literal"><span class="pre">times</span></code>, to mark all <code class="docutils literal"><span class="pre">all</span></code>s uniquely, and again
+after <code class="docutils literal"><span class="pre">times</span></code> to re-mark all marked <code class="docutils literal"><span class="pre">all</span></code>s uniquely.</p>
+<p>There's still the issue of searching through an unbounded number of
+ancestors—for example, how do we find out which of Ymir's descendants
+are scheduled to survive Ragnarök? We could make individual queries like
+<code class="docutils literal"><span class="pre">g.v('Ymir').in().filter({survives:</span> <span class="pre">true})</span></code> and
+<code class="docutils literal"><span class="pre">g.v('Ymir').in().in().in().in().filter({survives:</span> <span class="pre">true})</span></code>, and
+manually collect the results ourselves, but that's pretty awful.</p>
+<p>We'd like to use an adverb like this:</p>
+<div class="code javascript highlight-default"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="s1">&#39;Ymir&#39;</span><span class="p">)</span><span class="o">.</span><span class="ow">in</span><span class="p">()</span><span class="o">.</span><span class="n">filter</span><span class="p">({</span><span class="n">survives</span><span class="p">:</span> <span class="n">true</span><span class="p">})</span><span class="o">.</span><span class="n">every</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>which would work like <code class="docutils literal"><span class="pre">all</span></code>+<code class="docutils literal"><span class="pre">times</span></code> but without enforcing a
+limit. We may want to impose a particular strategy on the traversal,
+though, like a stolid BFS or YOLO DFS, so
+<code class="docutils literal"><span class="pre">g.v('Ymir').in().filter({survives:</span> <span class="pre">true}).bfs()</span></code> would be more
+flexible. Phrasing it this way allows us to state complicated queries
+like &quot;check for Ragnarök survivors, skipping every other generation&quot; in
+a straightforward fashion:
+<code class="docutils literal"><span class="pre">g.v('Ymir').in().filter({survives:</span> <span class="pre">true}).in().bfs()</span></code>.</p>
+<p class="rubric" id="wrapping-up">Wrapping Up</p>
+<p>So what have we learned? Graph databases are great for storing
+interconnected <a class="reference external" href="#fn34">:sup:`34`</a> data that you plan to query via graph
+traversals. Adding non-strict semantics allows for a fluent interface
+over queries you could never express in an eager system for performance
+reasons, and allows you to cross async boundaries. Time makes things
+complicated, and time from multiple perspectives (i.e., concurrency)
+makes things very complicated, so whenever we can avoid introducing a
+temporal dependency (e.g., state, observable effects, etc.) we make
+reasoning about our system easier. Building in a simple, decoupled and
+painfully unoptimized style leaves the door open for global
+optimizations later on, and using a driver loop allows for orthogonal
+optimizations—each without introducing the brittleness and complexity
+that is the hallmark of most optimization techniques.</p>
+<p>That last point can't be overstated: keep it simple. Eschew optimization
+in favor of simplicity. Work hard to achieve simplicity by finding the
+right model. Explore many possibilities. The chapters in this book
+provide ample evidence that highly non-trivial applications can have a
+small, tight kernel. Once you find that kernel for the application you
+are building, fight to keep complexity from polluting it. Build hooks
+for attaching additional functionality, and maintain your abstraction
+barriers at all costs. Using these techniques well is not easy, but they
+can give you leverage over otherwise intractable problems.</p>
+<p class="rubric" id="acknowledgements">Acknowledgements</p>
+<p>Many thanks are due to Amy Brown, Michael DiBernardo, Colin Lupton,
+Scott Rostrup, Michael Russo, Erin Toliver, and Leo Zovic for their
+invaluable contributions to this chapter.</p>
+<div class="footnotes"><hr class="docutils" />
+<ol class="arabic">
+<li><div class="first"><div id="fn1"></div></div><p>One of the very first database designs was the hierarchical model,
+which grouped items into tree-shaped hierarchies and is still used as
+the basis of IBM's IMS product, a high-speed transaction processing
+system. It's influence can also been seen in XML, file systems and
+geographic information storage. The network model, invented by
+Charles Bachmann and standardized by CODASYL, generalized the
+hierarchical model by allowing multiple parents, forming a DAG
+instead of a tree. These navigational database models came in to
+vogue in the 1960s and continued their dominance until performance
+gains made relational databases usable in the 1980s.<a class="reference external" href="#fnref1">↩</a></p>
+</li>
+<li><div class="first"><div id="fn2"></div></div><p>Edgar F. Codd developed relational database theory while working at
+IBM, but Big Blue feared that a relational database would cannibalize
+the sales of IMS. While IBM eventually built a research prototype
+called System R, it was based around a new non-relational language
+called SEQUEL, instead of Codd's original Alpha language. The SEQUEL
+language was copied by Larry Ellison in his Oracle Database based on
+pre-launch conference papers, and the name changed to SQL to avoid
+trademark disputes.<a class="reference external" href="#fnref2">↩</a></p>
+</li>
+<li><div class="first"><div id="fn3"></div></div><p>This database started life as a library for managing Directed Acyclic
+Graphs, or DAGs. Its name &quot;Dagoba&quot; was originally intended to come
+with a silent 'h' at the end, an homage to the swampy fictional
+planet, but reading the back of a chocolate bar one day we discovered
+the sans-h version refers to a place for silently contemplating the
+connections between things, which seems even more
+fitting.<a class="reference external" href="#fnref3">↩</a></p>
+</li>
+<li><div class="first"><div id="fn4"></div></div><p>The two purposes of this chapter are to teach this process, to build
+a graph database, and to have fun.<a class="reference external" href="#fnref4">↩</a></p>
+</li>
+<li><div class="first"><div id="fn5"></div></div><p>Notice that we're modeling edges as a pair of vertices. Also notice
+that those pairs are ordered, because we're using arrays. That means
+we're modeling a <em>directed graph</em>, where every edge has a starting
+vertex and an ending vertex. Our &quot;dots and lines&quot; visual model
+becomes a &quot;dots and arrows&quot; model. This adds complexity to our model,
+because we have to keep track of the direction of edges, but it also
+allows us to ask more interesting questions, like &quot;which vertices
+point to vertex 3?&quot; or &quot;which vertex has the most outgoing edges?&quot; If
+we need to model an undirected graph we could add a reversed edge for
+each existing edge in our directed graph. It can be cumbersome to go
+the other direction: simulating a directed graph from an undirected
+one. Can you think of a way to do it?<a class="reference external" href="#fnref5">↩</a></p>
+</li>
+<li><div class="first"><div id="fn6"></div></div><p>It's also lax in the other direction: all functions are variadic, and
+all arguments are available by position via the <code class="docutils literal"><span class="pre">arguments</span></code> object,
+which is almost like an array but not quite. (&quot;Variadic&quot; is a fancy
+way of saying a function has indefinite arity. &quot;A function has
+indefinite arity&quot; is a fancy way of saying it takes a variable number
+of variables.)<a class="reference external" href="#fnref6">↩</a></p>
+</li>
+<li><div class="first"><div id="fn7"></div></div><p>The <code class="docutils literal"><span class="pre">Array.isArray</span></code> checks here are to distinguish our two
+different use cases, but in general we won't be doing many of the
+validations one would expect of production code, in order to focus on
+the architecture instead of the trash bins.<a class="reference external" href="#fnref7">↩</a></p>
+</li>
+<li><div class="first"><div id="fn8"></div></div><p>Why can't we just use <code class="docutils literal"><span class="pre">this.vertices.length</span></code> here?<a class="reference external" href="#fnref8">↩</a></p>
+</li>
+<li><div class="first"><div id="fn9"></div></div><p>Often when faced with space leaks due to deep copying the solution is
+to use a path-copying persistent data structure, which allows
+mutation-free changes for only \(\log{}N\) extra space. But the
+problem remains: if the host application retains a pointer to the
+vertex data then it can mutate that data any time, regardless of what
+strictures we impose in our database. The only practical solution is
+deep copying vertices, which doubles our space usage. Dagoba's
+original use case involves vertices that are treated as immutable by
+the host application, which allows us to avoid this issue, but
+requires a certain amount of discipline on the part of the
+user.<a class="reference external" href="#fnref9">↩</a></p>
+</li>
+<li><div class="first"><div id="fn10"></div></div><p>We could make this decision based on a Dagoba-level configuration
+parameter, a graph-specific configuration, or possibly some type of
+heuristic.<a class="reference external" href="#fnref10">↩</a></p>
+</li>
+<li><div class="first"><div id="fn11"></div></div><p>We use the term <em>list</em> to refer to the abstract data structure
+requiring push and iterate operations. We use JavaScript's &quot;array&quot;
+concrete data structure to fulfill the API required by the list
+abstraction. Technically both &quot;list of edges&quot; and &quot;array of edges&quot;
+are correct, so which we use at a given moment depends on context: if
+we are relying on the specific details of JavaScript arrays, like the
+<code class="docutils literal"><span class="pre">.length</span></code> property, we will say &quot;array of edges&quot;. Otherwise we say
+&quot;list of edges&quot;, as an indication that any list implementation would
+suffice.<a class="reference external" href="#fnref11">↩</a></p>
+</li>
+<li><div class="first"><div id="fn12"></div></div><p>A tuple is another abstract data structure—one that is more
+constrained than a list. In particular a tuple has a fixed size: in
+this case we're using a 2-tuple (also known as a &quot;pair&quot; in the
+technical jargon of data structure researchers). Using the term for
+the most constrained abstract data structure required is a nicety for
+future implementors.<a class="reference external" href="#fnref12">↩</a></p>
+</li>
+<li><div class="first"><div id="fn13"></div></div><p>Very short lived garbage though, which is the second best
+kind.<a class="reference external" href="#fnref13">↩</a></p>
+</li>
+<li><div class="first"><div id="fn14"></div></div><p>Two references to the same mutable data structure act like a pair of
+walkie-talkies, allowing whoever holds them to communicate directly.
+Those walkie-talkies can be passed around from function to function,
+and cloned to create a whole lot of walkie-talkies. This completely
+subverts the natural communication channels your code already
+possesses. In a system with no concurrency you can sometimes get away
+with it, but introduce multithreading or asynchronous behavior and
+all that walkie-talkie squawking can become a real
+drag.<a class="reference external" href="#fnref14">↩</a></p>
+</li>
+<li><div class="first"><div id="fn15"></div></div><p>Uniqueness types were dusted off in the Clean language, and have a
+non-linear relationship with linear types, which are themselves a
+subtype of substructural types.<a class="reference external" href="#fnref15">↩</a></p>
+</li>
+<li><div class="first"><div id="fn16"></div></div><p>Most modern JS runtimes employ generational garbage collectors, and
+the language is intentionally kept at arm's length from the engine's
+memory management to curtail a source of programmatic
+non-determinism.<a class="reference external" href="#fnref16">↩</a></p>
+</li>
+<li><div class="first"><div id="fn17"></div></div><p>The <code class="docutils literal"><span class="pre">run()</span></code> at the end of the query invokes the interpreter and
+returns results.<a class="reference external" href="#fnref17">↩</a></p>
+</li>
+<li><div class="first"><div id="fn18"></div></div><p>With weight in skippund and height in fathoms, naturally. Depending
+on the density of Asgardian flesh this may return many results, or
+none at all. (Or just Volstagg, if we're allowing Shakespeare by way
+of Jack Kirby into our pantheon.)<a class="reference external" href="#fnref18">↩</a></p>
+</li>
+<li><div class="first"><div id="fn19"></div></div><p>Some would argue it's best to be explicit all the time. Others would
+argue that a good system for implicits makes for more concise,
+readable code, with less boilerplate and a smaller surface area for
+bugs. One thing we can all agree on is that making effective use of
+JavaScript's implicit coercion requires memorizing a lot of
+non-intuitive special cases, making it a minefield for the
+uninitiated.<a class="reference external" href="#fnref19">↩</a></p>
+</li>
+<li><div class="first"><div id="fn20"></div></div><p>What would you expect each of those to return? What do they actually
+return?<a class="reference external" href="#fnref20">↩</a></p>
+</li>
+<li><div class="first"><div id="fn21"></div></div><p>There are certain conditions under which this particular query might
+yield unexpected results. Can you think of any? How could you modify
+it to handle those cases?<a class="reference external" href="#fnref21">↩</a></p>
+</li>
+<li><div class="first"><div id="fn22"></div></div><p>Technically we need to implement an interpreter with non-strict
+semantics, which means it will only evaluate when forced to do so.
+Lazy evaluation is a technique used for implementing non-strictness.
+It's a bit lazy of us to conflate the two, so we will only
+disambiguate when forced to do so.<a class="reference external" href="#fnref22">↩</a></p>
+</li>
+<li><div class="first"><div id="fn23"></div></div><p>Method chaining lets us write <code class="docutils literal"><span class="pre">g.v('Thor').in().out().run()</span></code>
+instead of the six lines of non-fluent JS required to accomplish the
+same thing.<a class="reference external" href="#fnref23">↩</a></p>
+</li>
+<li><div class="first"><div id="fn24"></div></div><p>We call it <code class="docutils literal"><span class="pre">maybe_gremlin</span></code> to remind ourselves that it could be a
+gremlin, or it could be something else. Also because originally it
+was either a gremlin or Nothing.<a class="reference external" href="#fnref24">↩</a></p>
+</li>
+<li><div class="first"><div id="fn25"></div></div><p>Recall that done starts at -1, so the first step's predecessor is
+always done.<a class="reference external" href="#fnref25">↩</a></p>
+</li>
+<li><div class="first"><div id="fn26"></div></div><p>Or, more pointedly, a poorly phrased query is less likely to yield
+exponential slowdowns. As an end-user of an RDBMS the aesthetics of
+query quality can often be quite opaque.<a class="reference external" href="#fnref26">↩</a></p>
+</li>
+<li><div class="first"><div id="fn27"></div></div><p>Note that we're keeping the domain of the priority parameter open, so
+it can be an integer, a rational, a negative number, or even things
+like Infinity or NaN.<a class="reference external" href="#fnref27">↩</a></p>
+</li>
+<li><div class="first"><div id="fn28"></div></div><p>You can learn more about dependency resolution in the Contingent
+chapter of this book.<a class="reference external" href="#fnref28">↩</a></p>
+</li>
+<li><div class="first"><div id="fn29"></div></div><p>The fancy term for this is &quot;index-free adjacency&quot;.<a class="reference external" href="#fnref29">↩</a></p>
+</li>
+<li><div class="first"><div id="fn30"></div></div><p>Though only in operation for 18 months due to the arrival of the
+transcontinental telegraph and the outbreak of the American Civil
+War, the Pony Express is still remembered today for delivering mail
+coast to coast in just ten days.<a class="reference external" href="#fnref30">↩</a></p>
+</li>
+<li><div class="first"><div id="fn31"></div></div><p>Sharding a graph database requires partitioning the graph. <a class="reference external" href="http://dl.acm.org/citation.cfm?doid=1007912.1007931">Optimal
+graph partitioning is NP-hard</a>, even for simple graphs like trees
+and grids, and good approximations also have exponential <a class="reference external" href="http://arxiv.org/pdf/1311.3144v2.pdf">asymptotic
+complexity</a>.<a class="reference external" href="#fnref31">↩</a></p>
+</li>
+<li><div class="first"><div id="fn32"></div></div><p>In modern JavaScript engines filtering a list is quite fast—for small
+graphs the naive version can actually be faster than the index-free
+version due to the underlying data structures and the way the code is
+JIT compiled. Try it with different sizes of graphs to see how the
+two approaches scale.<a class="reference external" href="#fnref32">↩</a></p>
+</li>
+<li><div class="first"><div id="fn33"></div></div><p>Pro tip: Given a deep tree <code class="docutils literal"><span class="pre">deep_tree</span></code>, running
+<code class="docutils literal"><span class="pre">JSON.stringify(deep_tree,</span> <span class="pre">0,</span> <span class="pre">2)</span></code> in the JS console is a quick way
+to make it human readable.<a class="reference external" href="#fnref33">↩</a></p>
+</li>
+<li><div class="first"><div id="fn34"></div></div><p>Not <em>too</em> interconnected, though—you'd like the number of edges to
+grow in direct proportion to the number of vertices. In other words,
+the average number of edges connected to a vertex shouldn't vary with
+the size of the graph. Most systems we'd consider putting in a graph
+database already have this property: if Loki had 100,000 additional
+grandchildren the degree of the Thor vertex wouldn't
+increase.<a class="reference external" href="#fnref34">↩</a></p>
+</li>
+</ol>
+</div></div></div></div></div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Learn-Computer-and-Math-again</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="blockcode-a-visual-programming-toolkit.html">500 Lines or Less | Blockcode: A visual programming toolkit</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>快速搜索</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="转向" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, timger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/chapters/dagoba-an-in-memory-graph-database.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

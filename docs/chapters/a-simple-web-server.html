@@ -1,0 +1,864 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>500 Lines or Less | A Simple Web Server &#8212; Learn-Computer-and-Math-again 0.0.1 文档</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="索引" href="../genindex.html" />
+    <link rel="search" title="搜索" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lines-or-less-a-simple-web-server">
+<h1>500 Lines or Less | A Simple Web Server<a class="headerlink" href="#lines-or-less-a-simple-web-server" title="永久链接至标题">¶</a></h1>
+<div class="container"><div class="row"><div class="hero-unit"><p><a href="#id1"><span class="problematic" id="id2">``</span></a>_
+.. rubric:: A Simple Web Server</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">name:</th><td class="field-body">a-simple-web-server</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p class="author rubric" id="greg-wilson">Greg Wilson</p>
+</div></div><div class="row"><div id="content" class="span10 offset1"><p><em>`Greg Wilson`_ is the founder of Software Carpentry, a crash course in
+computing skills for scientists and engineers. He has worked for 30
+years in both industry and academia, and is the author or editor of
+several books on computing, including the 2008 Jolt Award winner
+*Beautiful Code</em> and the first two volumes of <em>The Architecture of Open
+Source Applications</em>. Greg received a PhD in Computer Science from the
+University of Edinburgh in 1993.*</p>
+<p class="rubric" id="introduction">Introduction</p>
+<p>The web has changed society in countless ways over the last two decades,
+but its core has changed very little. Most systems still follow the
+rules that Tim Berners-Lee laid out a quarter of a century ago. In
+particular, most web servers still handle the same kinds of messages
+they did then, in the same way.</p>
+<p>This chapter will explore how they do that. At the same time, it will
+explore how developers can create software systems that don't need to be
+rewritten in order to add new features.</p>
+<p class="rubric" id="background">Background</p>
+<p>Pretty much every program on the web runs on a family of communication
+standards called Internet Protocol (IP). The member of that family which
+concerns us is the Transmission Control Protocol (TCP/IP), which makes
+communication between computers look like reading and writing files.</p>
+<p>Programs using IP communicate through sockets. Each socket is one end of
+a point-to-point communication channel, just like a phone is one end of
+a phone call. A socket consists of an IP address that identifies a
+particular machine and a port number on that machine. The IP address
+consists of four 8-bit numbers, such as <code class="docutils literal"><span class="pre">174.136.14.108</span></code>; the Domain
+Name System (DNS) matches these numbers to symbolic names like
+<code class="docutils literal"><span class="pre">aosabook.org</span></code> that are easier for human beings to remember.</p>
+<p>A port number is a number in the range 0-65535 that uniquely identifies
+the socket on the host machine. (If an IP address is like a company's
+phone number, then a port number is like an extension.) Ports 0-1023 are
+reserved for the operating system's use; anyone else can use the
+remaining ports.</p>
+<p>The Hypertext Transfer Protocol (HTTP) describes one way that programs
+can exchange data over IP. HTTP is deliberately simple: the client sends
+a request specifying what it wants over a socket connection, and the
+server sends some data in response (<a class="reference external" href="#figure-22.1">Figure 22.1</a>.) The data may be
+copied from a file on disk, generated dynamically by a program, or some
+mix of the two.</p>
+<div class="center figure"><p><img alt="Figure 22.1 - The HTTP Cycle" src="chapters/web-server-images/http-cycle.png" /></p>
+</div><p>Figure 22.1 - The HTTP Cycle</p>
+<p>The most important thing about an HTTP request is that it's just text:
+any program that wants to can create one or parse one. In order to be
+understood, though, that text must have the parts shown in <a class="reference external" href="#figure-22.2">Figure
+22.2</a>.</p>
+<div class="center figure"><p><img alt="Figure 22.2 - An HTTP Request" src="chapters/web-server-images/http-request.png" /></p>
+</div><p>Figure 22.2 - An HTTP Request</p>
+<p>The HTTP method is almost always either &quot;GET&quot; (to fetch information) or
+&quot;POST&quot; (to submit form data or upload files). The URL specifies what the
+client wants; it is often a path to a file on disk, such as
+<code class="docutils literal"><span class="pre">/research/experiments.html</span></code>, but (and this is the crucial part) it's
+completely up to the server to decide what to do with it. The HTTP
+version is usually &quot;HTTP/1.0&quot; or &quot;HTTP/1.1&quot;; the differences between the
+two don't matter to us.</p>
+<p>HTTP headers are key/value pairs like the three shown below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Accept</span><span class="p">:</span> <span class="n">text</span><span class="o">/</span><span class="n">html</span>
+<span class="n">Accept</span><span class="o">-</span><span class="n">Language</span><span class="p">:</span> <span class="n">en</span><span class="p">,</span> <span class="n">fr</span>
+<span class="n">If</span><span class="o">-</span><span class="n">Modified</span><span class="o">-</span><span class="n">Since</span><span class="p">:</span> <span class="mi">16</span><span class="o">-</span><span class="n">May</span><span class="o">-</span><span class="mi">2005</span>
+</pre></div>
+</div>
+<p>Unlike the keys in hash tables, keys may appear any number of times in
+HTTP headers. This allows a request to do things like specify that it's
+willing to accept several types of content.</p>
+<p>Finally, the body of the request is any extra data associated with the
+request. This is used when submitting data via web forms, when uploading
+files, and so on. There must be a blank line between the last header and
+the start of the body to signal the end of the headers.</p>
+<p>One header, called <code class="docutils literal"><span class="pre">Content-Length</span></code>, tells the server how many bytes
+to expect to read in the body of the request.</p>
+<p>HTTP responses are formatted like HTTP requests (<a class="reference external" href="#figure-22.3">Figure 22.3</a>):</p>
+<div class="center figure"><p><img alt="Figure 22.3 - An HTTP Response" src="chapters/web-server-images/http-response.png" /></p>
+</div><p>Figure 22.3 - An HTTP Response</p>
+<p>The version, headers, and body have the same form and meaning. The
+status code is a number indicating what happened when the request was
+processed: 200 means &quot;everything worked&quot;, 404 means &quot;not found&quot;, and
+other codes have other meanings. The status phrase repeats that
+information in a human-readable phrase like &quot;OK&quot; or &quot;not found&quot;.</p>
+<p>For the purposes of this chapter there are only two other things we need
+to know about HTTP.</p>
+<p>The first is that it is <em>stateless</em>: each request is handled on its own,
+and the server doesn't remember anything between one request and the
+next. If an application wants to keep track of something like a user's
+identity, it must do so itself.</p>
+<p>The usual way to do this is with a cookie, which is a short character
+string that the server sends to the client, and the client later returns
+to the server. When a user performs some function that requires state to
+be saved across several requests, the server creates a new cookie,
+stores it in a database, and sends it to her browser. Each time her
+browser sends the cookie back, the server uses it to look up information
+about what the user is doing.</p>
+<p>The second thing we need to know about HTTP is that a URL can be
+supplemented with parameters to provide even more information. For
+example, if we're using a search engine, we have to specify what our
+search terms are. We could add these to the path in the URL, but what we
+should do is add parameters to the URL. We do this by adding '?' to the
+URL followed by 'key=value' pairs separated by '&amp;'. For example, the URL
+<code class="docutils literal"><span class="pre">http://www.google.ca?q=Python</span></code> asks Google to search for pages
+related to Python: the key is the letter 'q', and the value is 'Python'.
+The longer query
+<code class="docutils literal"><span class="pre">http://www.google.ca/search?q=Python&amp;amp;client=Firefox</span></code> tells Google
+that we're using Firefox, and so on. We can pass whatever parameters we
+want, but again, it's up to the application running on the web site to
+decide which ones to pay attention to, and how to interpret them.</p>
+<p>Of course, if '?' and '&amp;' are special characters, there must be a way to
+escape them, just as there must be a way to put a double quote character
+inside a character string delimited by double quotes. The URL encoding
+standard represents special characters using '%' followed by a 2-digit
+code, and replaces spaces with the '+' character. Thus, to search Google
+for &quot;grade&nbsp;=&nbsp;A+&quot; (with the spaces), we would use the URL
+<code class="docutils literal"><span class="pre">http://www.google.ca/search?q=grade+%3D+A%2B</span></code>.</p>
+<p>Opening sockets, constructing HTTP requests, and parsing responses is
+tedious, so most people use libraries to do most of the work. Python
+comes with such a library called <code class="docutils literal"><span class="pre">urllib2</span></code> (because it's a replacement
+for an earlier library called <code class="docutils literal"><span class="pre">urllib</span></code>), but it exposes a lot of
+plumbing that most people never want to care about. The <a class="reference external" href="https://pypi.python.org/pypi/requests">Requests</a>
+library is an easier-to-use alternative to <code class="docutils literal"><span class="pre">urllib2</span></code>. Here's an
+example that uses it to download a page from the AOSA book site:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">requests</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;http://aosabook.org/en/500L/web-server/testpage.html&#39;</span><span class="p">)</span>
+<span class="nb">print</span> <span class="s1">&#39;status code:&#39;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span>
+<span class="nb">print</span> <span class="s1">&#39;content length:&#39;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;content-length&#39;</span><span class="p">]</span>
+<span class="nb">print</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span>
+</pre></div>
+</div>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">status</span> <span class="n">code</span><span class="p">:</span> <span class="mi">200</span>
+<span class="n">content</span> <span class="n">length</span><span class="p">:</span> <span class="mi">61</span>
+<span class="o">&lt;</span><span class="n">html</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Test</span> <span class="n">page</span><span class="o">.&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+  <span class="o">&lt;/</span><span class="n">body</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">html</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">request.get</span></code> sends an HTTP GET request to a server and returns an
+object containing the response. That object's <code class="docutils literal"><span class="pre">status_code</span></code> member is
+the response's status code; its <code class="docutils literal"><span class="pre">content_length</span></code> member is the number
+of bytes in the response data, and <code class="docutils literal"><span class="pre">text</span></code> is the actual data (in this
+case, an HTML page).</p>
+<p class="rubric" id="hello-web">Hello, Web</p>
+<p>We're now ready to write our first simple web server. The basic idea is
+simple:</p>
+<ol class="arabic simple">
+<li>Wait for someone to connect to our server and send an HTTP request;</li>
+<li>parse that request;</li>
+<li>figure out what it's asking for;</li>
+<li>fetch that data (or generate it dynamically);</li>
+<li>format the data as HTML; and</li>
+<li>send it back.</li>
+</ol>
+<p>Steps 1, 2, and 6 are the same from one application to another, so the
+Python standard library has a module called <code class="docutils literal"><span class="pre">BaseHTTPServer</span></code> that does
+those for us. We just have to take care of steps 3-5, which we do in the
+little program below:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">BaseHTTPServer</span>
+
+<span class="k">class</span> <span class="nc">RequestHandler</span><span class="p">(</span><span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Handle HTTP requests by returning a fixed &#39;page&#39;.&#39;&#39;&#39;</span>
+
+    <span class="c1"># Page to send back.</span>
+    <span class="n">Page</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span><span class="se">\</span>
+<span class="s1">&lt;html&gt;</span>
+<span class="s1">&lt;body&gt;</span>
+<span class="s1">&lt;p&gt;Hello, web!&lt;/p&gt;</span>
+<span class="s1">&lt;/body&gt;</span>
+<span class="s1">&lt;/html&gt;</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+    <span class="c1"># Handle a GET request.</span>
+    <span class="k">def</span> <span class="nf">do_GET</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Page</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Page</span><span class="p">)</span>
+
+<span class="c1">#----------------------------------------------------------------------</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">serverAddress</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">8080</span><span class="p">)</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">HTTPServer</span><span class="p">(</span><span class="n">serverAddress</span><span class="p">,</span> <span class="n">RequestHandler</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The library's <code class="docutils literal"><span class="pre">BaseHTTPRequestHandler</span></code> class takes care of parsing the
+incoming HTTP request and deciding what method it contains. If the
+method is GET, the class calls a method named <code class="docutils literal"><span class="pre">do_GET</span></code>. Our class
+<code class="docutils literal"><span class="pre">RequestHandler</span></code> overrides this method to dynamically generate a
+simple page: the text is stored in the class-level variable <code class="docutils literal"><span class="pre">Page</span></code>,
+which we send back to the client after sending a 200 response code, a
+<code class="docutils literal"><span class="pre">Content-Type</span></code> header telling the client to interpret our data as
+HTML, and the page's length. (The <code class="docutils literal"><span class="pre">end_headers</span></code> method call inserts
+the blank line that separates our headers from the page itself.)</p>
+<p>But <code class="docutils literal"><span class="pre">RequestHandler</span></code> isn't the whole story: we still need the last
+three lines to actually start a server running. The first of these lines
+defines the server's address as a tuple: the empty string means &quot;run on
+the current machine&quot;, and 8080 is the port. We then create an instance
+of <code class="docutils literal"><span class="pre">BaseHTTPServer.HTTPServer</span></code> with that address and the name of our
+request handler class as parameters, then ask it to run forever (which
+in practice means until we kill it with Control-C).</p>
+<p>If we run this program from the command line, it doesn't display
+anything:</p>
+<div class="code bash highlight-default"><div class="highlight"><pre><span></span>$ python server.py
+</pre></div>
+</div>
+<p>If we then go to <code class="docutils literal"><span class="pre">http://localhost:8080</span></code> with our browser, though, we
+get this in our browser:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>Hello, web!
+</pre></div>
+</div>
+<p>and this in our shell:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span> <span class="o">-</span> <span class="o">-</span> <span class="p">[</span><span class="mi">24</span><span class="o">/</span><span class="n">Feb</span><span class="o">/</span><span class="mi">2014</span> <span class="mi">10</span><span class="p">:</span><span class="mi">26</span><span class="p">:</span><span class="mi">28</span><span class="p">]</span> <span class="s2">&quot;GET / HTTP/1.1&quot;</span> <span class="mi">200</span> <span class="o">-</span>
+<span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span> <span class="o">-</span> <span class="o">-</span> <span class="p">[</span><span class="mi">24</span><span class="o">/</span><span class="n">Feb</span><span class="o">/</span><span class="mi">2014</span> <span class="mi">10</span><span class="p">:</span><span class="mi">26</span><span class="p">:</span><span class="mi">28</span><span class="p">]</span> <span class="s2">&quot;GET /favicon.ico HTTP/1.1&quot;</span> <span class="mi">200</span> <span class="o">-</span>
+</pre></div>
+</div>
+<p>The first line is straightforward: since we didn't ask for a particular
+file, our browser has asked for '/' (the root directory of whatever the
+server is serving). The second line appears because our browser
+automatically sends a second request for an image file called
+<code class="docutils literal"><span class="pre">/favicon.ico</span></code>, which it will display as an icon in the address bar if
+it exists.</p>
+<p class="rubric" id="displaying-values">Displaying Values</p>
+<p>Let's modify our web server to display some of the values included in
+the HTTP request. (We'll do this pretty frequently when debugging, so we
+might as well get some practice.) To keep our code clean, we'll separate
+creating the page from sending it:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">RequestHandler</span><span class="p">(</span><span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="p">):</span>
+
+    <span class="c1"># ...page template...</span>
+
+    <span class="k">def</span> <span class="nf">do_GET</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_page</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_page</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">create_page</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># ...fill in...</span>
+
+    <span class="k">def</span> <span class="nf">send_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">):</span>
+        <span class="c1"># ...fill in...</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">send_page</span></code> is pretty much what we had before:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">send_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-type&quot;</span><span class="p">,</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="p">)))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The template for the page we want to display is just a string containing
+an HTML table with some formatting placeholders:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span>    <span class="n">Page</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span><span class="se">\</span>
+<span class="s1">&lt;html&gt;</span>
+<span class="s1">&lt;body&gt;</span>
+<span class="s1">&lt;table&gt;</span>
+<span class="s1">&lt;tr&gt;  &lt;td&gt;Header&lt;/td&gt;         &lt;td&gt;Value&lt;/td&gt;          &lt;/tr&gt;</span>
+<span class="s1">&lt;tr&gt;  &lt;td&gt;Date and time&lt;/td&gt;  &lt;td&gt;</span><span class="si">{date_time}</span><span class="s1">&lt;/td&gt;    &lt;/tr&gt;</span>
+<span class="s1">&lt;tr&gt;  &lt;td&gt;Client host&lt;/td&gt;    &lt;td&gt;</span><span class="si">{client_host}</span><span class="s1">&lt;/td&gt;  &lt;/tr&gt;</span>
+<span class="s1">&lt;tr&gt;  &lt;td&gt;Client port&lt;/td&gt;    &lt;td&gt;</span><span class="si">{client_port}</span><span class="s1">s&lt;/td&gt; &lt;/tr&gt;</span>
+<span class="s1">&lt;tr&gt;  &lt;td&gt;Command&lt;/td&gt;        &lt;td&gt;</span><span class="si">{command}</span><span class="s1">&lt;/td&gt;      &lt;/tr&gt;</span>
+<span class="s1">&lt;tr&gt;  &lt;td&gt;Path&lt;/td&gt;           &lt;td&gt;</span><span class="si">{path}</span><span class="s1">&lt;/td&gt;         &lt;/tr&gt;</span>
+<span class="s1">&lt;/table&gt;</span>
+<span class="s1">&lt;/body&gt;</span>
+<span class="s1">&lt;/html&gt;</span>
+<span class="s1">&#39;&#39;&#39;</span>
+</pre></div>
+</div>
+<p>and the method that fills this in is:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_page</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;date_time&#39;</span>   <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">date_time_string</span><span class="p">(),</span>
+        <span class="s1">&#39;client_host&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">client_address</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="s1">&#39;client_port&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">client_address</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+        <span class="s1">&#39;command&#39;</span>     <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">,</span>
+        <span class="s1">&#39;path&#39;</span>        <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+    <span class="p">}</span>
+    <span class="n">page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Page</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">values</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">page</span>
+</pre></div>
+</div>
+<p>The main body of the program is unchanged: as before, it creates an
+instance of the <code class="docutils literal"><span class="pre">HTTPServer</span></code> class with an address and this request
+handler as parameters, then serves requests forever. If we run it and
+send a request from a browser for
+<code class="docutils literal"><span class="pre">http://localhost:8080/something.html</span></code>, we get:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Date</span> <span class="ow">and</span> <span class="n">time</span>  <span class="n">Mon</span><span class="p">,</span> <span class="mi">24</span> <span class="n">Feb</span> <span class="mi">2014</span> <span class="mi">17</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">12</span> <span class="n">GMT</span>
+<span class="n">Client</span> <span class="n">host</span>    <span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span>
+<span class="n">Client</span> <span class="n">port</span>    <span class="mi">54548</span>
+<span class="n">Command</span>        <span class="n">GET</span>
+<span class="n">Path</span>           <span class="o">/</span><span class="n">something</span><span class="o">.</span><span class="n">html</span>
+</pre></div>
+</div>
+<p>Notice that we do <em>not</em> get a 404 error, even though the page
+<code class="docutils literal"><span class="pre">something.html</span></code> doesn't exist as a file on disk. That's because a web
+server is just a program, and can do whatever it wants when it gets a
+request: send back the file named in the previous request, serve up a
+Wikipedia page chosen at random, or whatever else we program it to.</p>
+<p class="rubric" id="serving-static-pages">Serving Static Pages</p>
+<p>The obvious next step is to start serving pages from the disk instead of
+generating them on the fly. We'll start by rewriting <code class="docutils literal"><span class="pre">do_GET</span></code>:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">do_GET</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+
+        <span class="c1"># Figure out what exactly is being requested.</span>
+        <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+
+        <span class="c1"># It doesn&#39;t exist...</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">full_path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ServerException</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{0}</span><span class="s2">&#39; not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+        <span class="c1"># ...it&#39;s a file...</span>
+        <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">full_path</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_file</span><span class="p">(</span><span class="n">full_path</span><span class="p">)</span>
+
+        <span class="c1"># ...it&#39;s something we don&#39;t handle.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ServerException</span><span class="p">(</span><span class="s2">&quot;Unknown object &#39;</span><span class="si">{0}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="c1"># Handle errors.</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This method assumes that it's allowed to serve any files in or below the
+directory that the web server is running in (which it gets using
+<code class="docutils literal"><span class="pre">os.getcwd</span></code>). It combines this with the path provided in the URL
+(which the library automatically puts in <code class="docutils literal"><span class="pre">self.path</span></code>, and which always
+starts with a leading '/') to get the path to the file the user wants.</p>
+<p>If that doesn't exist, or if it isn't a file, the method reports an
+error by raising and catching an exception. If the path matches a file,
+on the other hand, it calls a helper method named <code class="docutils literal"><span class="pre">handle_file</span></code> to
+read and return the contents. This method just reads the file and uses
+our existing <code class="docutils literal"><span class="pre">send_content</span></code> to send it back to the client:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">handle_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_path</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">full_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">reader</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;&#39;</span><span class="si">{0}</span><span class="s2">&#39; cannot be read: </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that we open the file in binary mode—the 'b' in 'rb'—so that Python
+won't try to &quot;help&quot; us by altering byte sequences that look like a
+Windows line ending. Note also that reading the whole file into memory
+when serving it is a bad idea in real life, where the file might be
+several gigabytes of video data. Handling that situation is outside the
+scope of this chapter.</p>
+<p>To finish off this class, we need to write the error handling method and
+the template for the error reporting page:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">Error_Page</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">    &lt;html&gt;</span>
+<span class="s2">    &lt;body&gt;</span>
+<span class="s2">    &lt;h1&gt;Error accessing </span><span class="si">{path}</span><span class="s2">&lt;/h1&gt;</span>
+<span class="s2">    &lt;p&gt;</span><span class="si">{msg}</span><span class="s2">&lt;/p&gt;</span>
+<span class="s2">    &lt;/body&gt;</span>
+<span class="s2">    &lt;/html&gt;</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+<span class="k">def</span> <span class="nf">handle_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Error_Page</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">msg</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This program works, but only if we don't look too closely. The problem
+is that it always returns a status code of 200, even when the page being
+requested doesn't exist. Yes, the page sent back in that case contains
+an error message, but since our browser can't read English, it doesn't
+know that the request actually failed. In order to make that clear, we
+need to modify <code class="docutils literal"><span class="pre">handle_error</span></code> and <code class="docutils literal"><span class="pre">send_content</span></code> as follows:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="c1"># Handle unknown objects.</span>
+<span class="k">def</span> <span class="nf">handle_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Error_Page</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">msg</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="mi">404</span><span class="p">)</span>
+
+<span class="c1"># Send actual content.</span>
+<span class="k">def</span> <span class="nf">send_content</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-type&quot;</span><span class="p">,</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that we don't raise <code class="docutils literal"><span class="pre">ServerException</span></code> when a file can't be found,
+but generate an error page instead. A <code class="docutils literal"><span class="pre">ServerException</span></code> is meant to
+signal an internal error in the server code, i.e., something that <em>we</em>
+got wrong. The error page created by <code class="docutils literal"><span class="pre">handle_error</span></code>, on the other
+hand, appears when the <em>user</em> got something wrong, i.e., sent us the URL
+of a file that doesn't exist. <a class="reference external" href="#fn1">:sup:`1`</a></p>
+<p class="rubric" id="listing-directories">Listing Directories</p>
+<p>As our next step, we could teach the web server to display a listing of
+a directory's contents when the path in the URL is a directory rather
+than a file. We could even go one step further and have it look in that
+directory for an <code class="docutils literal"><span class="pre">index.html</span></code> file to display, and only show a listing
+of the directory's contents if that file is not present.</p>
+<p>But building these rules into <code class="docutils literal"><span class="pre">do_GET</span></code> would be a mistake, since the
+resulting method would be a long tangle of <code class="docutils literal"><span class="pre">if</span></code> statements controlling
+special behaviors. The right solution is to step back and solve the
+general problem, which is figuring out what to do with a URL. Here's a
+rewrite of the <code class="docutils literal"><span class="pre">do_GET</span></code> method:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">do_GET</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+
+        <span class="c1"># Figure out what exactly is being requested.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+
+        <span class="c1"># Figure out how to handle it.</span>
+        <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">Cases</span><span class="p">:</span>
+            <span class="n">handler</span> <span class="o">=</span> <span class="n">case</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">handler</span><span class="o">.</span><span class="n">test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">handler</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                <span class="k">break</span>
+
+    <span class="c1"># Handle errors.</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The first step is the same: figure out the full path to the thing being
+requested. After that, though, the code looks quite different. Instead
+of a bunch of inline tests, this version loops over a set of cases
+stored in a list. Each case is an object with two methods: <code class="docutils literal"><span class="pre">test</span></code>,
+which tells us whether it's able to handle the request, and <code class="docutils literal"><span class="pre">act</span></code>,
+which actually takes some action. As soon as we find the right case, we
+let it handle the request and break out of the loop.</p>
+<p>These three case classes reproduce the behavior of our previous server:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">case_no_file</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;File or directory does not exist.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">ServerException</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{0}</span><span class="s2">&#39; not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">case_existing_file</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;File exists.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="n">handler</span><span class="o">.</span><span class="n">handle_file</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">case_always_fail</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Base case if nothing else worked.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">ServerException</span><span class="p">(</span><span class="s2">&quot;Unknown object &#39;</span><span class="si">{0}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>and here's how we construct the list of case handlers at the top of the
+<code class="docutils literal"><span class="pre">RequestHandler</span></code> class:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">RequestHandler</span><span class="p">(</span><span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    If the requested path maps to a file, that file is served.</span>
+<span class="sd">    If anything goes wrong, an error page is constructed.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">Cases</span> <span class="o">=</span> <span class="p">[</span><span class="n">case_no_file</span><span class="p">(),</span>
+             <span class="n">case_existing_file</span><span class="p">(),</span>
+             <span class="n">case_always_fail</span><span class="p">()]</span>
+
+    <span class="o">...</span><span class="n">everything</span> <span class="k">else</span> <span class="k">as</span> <span class="n">before</span><span class="o">...</span>
+</pre></div>
+</div>
+<p>Now, on the surface this has made our server more complicated, not less:
+the file has grown from 74 lines to 99, and there's an extra level of
+indirection without any new functionality. The benefit comes when we go
+back to the task that started this chapter and try to teach our server
+to serve up the <code class="docutils literal"><span class="pre">index.html</span></code> page for a directory if there is one, and
+a listing of the directory if there isn't. The handler for the former
+is:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">case_directory_index_file</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Serve index.html page for a directory.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">index_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">,</span> <span class="s1">&#39;index.html&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span> <span class="ow">and</span> \
+               <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index_path</span><span class="p">(</span><span class="n">handler</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="n">handler</span><span class="o">.</span><span class="n">handle_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index_path</span><span class="p">(</span><span class="n">handler</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Here, the helper method <code class="docutils literal"><span class="pre">index_path</span></code> constructs the path to the
+<code class="docutils literal"><span class="pre">index.html</span></code> file; putting it in the case handler prevents clutter in
+the main <code class="docutils literal"><span class="pre">RequestHandler</span></code>. <code class="docutils literal"><span class="pre">test</span></code> checks whether the path is a
+directory containing an <code class="docutils literal"><span class="pre">index.html</span></code> page, and <code class="docutils literal"><span class="pre">act</span></code> asks the main
+request handler to serve that page.</p>
+<p>The only change needed to <code class="docutils literal"><span class="pre">RequestHandler</span></code> is to add a
+<code class="docutils literal"><span class="pre">case_directory_index_file</span></code> object to our <code class="docutils literal"><span class="pre">Cases</span></code> list:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="n">Cases</span> <span class="o">=</span> <span class="p">[</span><span class="n">case_no_file</span><span class="p">(),</span>
+         <span class="n">case_existing_file</span><span class="p">(),</span>
+         <span class="n">case_directory_index_file</span><span class="p">(),</span>
+         <span class="n">case_always_fail</span><span class="p">()]</span>
+</pre></div>
+</div>
+<p>What about directories that don't contain <code class="docutils literal"><span class="pre">index.html</span></code> pages? The test
+is the same as the one above with a <code class="docutils literal"><span class="pre">not</span></code> strategically inserted, but
+what about the <code class="docutils literal"><span class="pre">act</span></code> method? What should it do?</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span>class case_directory_no_index_file(object):
+    &#39;&#39;&#39;Serve listing for a directory without an index.html page.&#39;&#39;&#39;
+
+    def index_path(self, handler):
+        return os.path.join(handler.full_path, &#39;index.html&#39;)
+
+    def test(self, handler):
+        return os.path.isdir(handler.full_path) and \
+               not os.path.isfile(self.index_path(handler))
+
+    def act(self, handler):
+        ???
+</pre></div>
+</div>
+<p>It seems we've backed ourselves into a corner. Logically, the <code class="docutils literal"><span class="pre">act</span></code>
+method should create and return the directory listing, but our existing
+code doesn't allow for that: <code class="docutils literal"><span class="pre">RequestHandler.do_GET</span></code> calls <code class="docutils literal"><span class="pre">act</span></code>,
+but doesn't expect or handle a return value from it. For now, let's add
+a method to <code class="docutils literal"><span class="pre">RequestHandler</span></code> to generate a directory listing, and call
+that from the case handler's <code class="docutils literal"><span class="pre">act</span></code>:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">case_directory_no_index_file</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Serve listing for a directory without an index.html page.&#39;&#39;&#39;</span>
+
+    <span class="c1"># ...index_path and test as above...</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="n">handler</span><span class="o">.</span><span class="n">list_dir</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">RequestHandler</span><span class="p">(</span><span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="p">):</span>
+
+    <span class="c1"># ...all the other code...</span>
+
+    <span class="c1"># How to display a directory listing.</span>
+    <span class="n">Listing_Page</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span><span class="se">\</span>
+<span class="s1">        &lt;html&gt;</span>
+<span class="s1">        &lt;body&gt;</span>
+<span class="s1">        &lt;ul&gt;</span>
+<span class="s1">        </span><span class="si">{0}</span><span class="s1"></span>
+<span class="s1">        &lt;/ul&gt;</span>
+<span class="s1">        &lt;/body&gt;</span>
+<span class="s1">        &lt;/html&gt;</span>
+<span class="s1">        &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">list_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_path</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">entries</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">full_path</span><span class="p">)</span>
+            <span class="n">bullets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&lt;li&gt;</span><span class="si">{0}</span><span class="s1">&lt;/li&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entries</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)]</span>
+            <span class="n">page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Listing_Page</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bullets</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">msg</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;&#39;</span><span class="si">{0}</span><span class="s2">&#39; cannot be listed: </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric" id="the-cgi-protocol">The CGI Protocol</p>
+<p>Of course, most people won't want to edit the source of their web server
+in order to add new functionality. To save them from having to do so,
+servers have always supported a mechanism called the Common Gateway
+Interface (CGI), which provides a standard way for a web server to run
+an external program in order to satisfy a request.</p>
+<p>For example, suppose we want the server to be able to display the local
+time in an HTML page. We can do this in a standalone program with just a
+few lines of code:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="nb">print</span> <span class="s1">&#39;&#39;&#39;</span><span class="se">\</span>
+<span class="s1">&lt;html&gt;</span>
+<span class="s1">&lt;body&gt;</span>
+<span class="s1">&lt;p&gt;Generated </span><span class="si">{0}</span><span class="s1">&lt;/p&gt;</span>
+<span class="s1">&lt;/body&gt;</span>
+<span class="s1">&lt;/html&gt;&#39;&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>In order to get the web server to run this program for us, we add this
+case handler:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">case_cgi_file</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Something runnable.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span> <span class="ow">and</span> \
+               <span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.py&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="n">handler</span><span class="o">.</span><span class="n">run_cgi</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The test is simple: does the file path end with <code class="docutils literal"><span class="pre">.py</span></code>? If so,
+<code class="docutils literal"><span class="pre">RequestHandler</span></code> runs this program.</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">run_cgi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_path</span><span class="p">):</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;python &quot;</span> <span class="o">+</span> <span class="n">full_path</span>
+    <span class="n">child_stdin</span><span class="p">,</span> <span class="n">child_stdout</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen2</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+    <span class="n">child_stdin</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">child_stdout</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">child_stdout</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This is horribly insecure: if someone knows the path to a Python file on
+our server, we're just letting them run it without worrying about what
+data it has access to, whether it might contain an infinite loop, or
+anything else.<a class="reference external" href="#fn2">:sup:`2`</a></p>
+<p>Sweeping that aside, the core idea is simple:</p>
+<ol class="arabic simple">
+<li>Run the program in a subprocess.</li>
+<li>Capture whatever that subprocess sends to standard output.</li>
+<li>Send that back to the client that made the request.</li>
+</ol>
+<p>The full CGI protocol is much richer than this—in particular, it allows
+for parameters in the URL, which the server passes into the program
+being run—but those details don't affect the overall architecture of the
+system...</p>
+<p>...which is once again becoming rather tangled. <code class="docutils literal"><span class="pre">RequestHandler</span></code>
+initially had one method, <code class="docutils literal"><span class="pre">handle_file</span></code>, for dealing with content. We
+have now added two special cases in the form of <code class="docutils literal"><span class="pre">list_dir</span></code> and
+<code class="docutils literal"><span class="pre">run_cgi</span></code>. These three methods don't really belong where they are,
+since they're primarily used by others.</p>
+<p>The fix is straightforward: create a parent class for all our case
+handlers, and move other methods to that class if (and only if) they are
+shared by two or more handlers. When we're done, the <code class="docutils literal"><span class="pre">RequestHandler</span></code>
+class looks like this:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">RequestHandler</span><span class="p">(</span><span class="n">BaseHTTPServer</span><span class="o">.</span><span class="n">BaseHTTPRequestHandler</span><span class="p">):</span>
+
+    <span class="n">Cases</span> <span class="o">=</span> <span class="p">[</span><span class="n">case_no_file</span><span class="p">(),</span>
+             <span class="n">case_cgi_file</span><span class="p">(),</span>
+             <span class="n">case_existing_file</span><span class="p">(),</span>
+             <span class="n">case_directory_index_file</span><span class="p">(),</span>
+             <span class="n">case_directory_no_index_file</span><span class="p">(),</span>
+             <span class="n">case_always_fail</span><span class="p">()]</span>
+
+    <span class="c1"># How to display an error.</span>
+    <span class="n">Error_Page</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">        &lt;html&gt;</span>
+<span class="s2">        &lt;body&gt;</span>
+<span class="s2">        &lt;h1&gt;Error accessing </span><span class="si">{path}</span><span class="s2">&lt;/h1&gt;</span>
+<span class="s2">        &lt;p&gt;</span><span class="si">{msg}</span><span class="s2">&lt;/p&gt;</span>
+<span class="s2">        &lt;/body&gt;</span>
+<span class="s2">        &lt;/html&gt;</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+    <span class="c1"># Classify and handle request.</span>
+    <span class="k">def</span> <span class="nf">do_GET</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+
+            <span class="c1"># Figure out what exactly is being requested.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+
+            <span class="c1"># Figure out how to handle it.</span>
+            <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">Cases</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">case</span><span class="o">.</span><span class="n">test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="n">case</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="c1"># Handle errors.</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">msg</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="c1"># Handle unknown objects.</span>
+    <span class="k">def</span> <span class="nf">handle_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Error_Page</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="mi">404</span><span class="p">)</span>
+
+    <span class="c1"># Send actual content.</span>
+    <span class="k">def</span> <span class="nf">send_content</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-type&quot;</span><span class="p">,</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>while the parent class for our case handlers is:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">base_case</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Parent for case handlers.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">handle_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">,</span> <span class="n">full_path</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">full_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">reader</span><span class="p">:</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">handler</span><span class="o">.</span><span class="n">send_content</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">msg</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;&#39;</span><span class="si">{0}</span><span class="s2">&#39; cannot be read: </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">full_path</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+            <span class="n">handler</span><span class="o">.</span><span class="n">handle_error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">index_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">,</span> <span class="s1">&#39;index.html&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Not implemented.&#39;</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Not implemented.&#39;</span>
+</pre></div>
+</div>
+<p>and the handler for an existing file (just to pick an example at random)
+is:</p>
+<div class="code python highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">case_existing_file</span><span class="p">(</span><span class="n">base_case</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;File exists.&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_file</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">handler</span><span class="o">.</span><span class="n">full_path</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric" id="discussion">Discussion</p>
+<p>The differences between our original code and the refactored version
+reflect two important ideas. The first is to think of a class as a
+collection of related services. <code class="docutils literal"><span class="pre">RequestHandler</span></code> and <code class="docutils literal"><span class="pre">base_case</span></code>
+don't make decisions or take actions; they provide tools that other
+classes can use to do those things.</p>
+<p>The second is extensibility: people can add new functionality to our web
+server either by writing an external CGI program, or by adding a case
+handler class. The latter does require a one-line change to
+<code class="docutils literal"><span class="pre">RequestHandler</span></code> (to insert the case handler in the <code class="docutils literal"><span class="pre">Cases</span></code> list),
+but we could get rid of that by having the web server read a
+configuration file and load handler classes from that. In both cases,
+they can ignore most lower-level details, just as the authors of the
+<code class="docutils literal"><span class="pre">BaseHTTPRequestHandler</span></code> class have allowed us to ignore the details
+of handling socket connections and parsing HTTP requests.</p>
+<p>These ideas are generally useful; see if you can find ways to use them
+in your own projects.</p>
+<div class="footnotes"><hr class="docutils" />
+<ol class="arabic">
+<li><div class="first"><div id="fn1"></div></div><p>We're going to use <code class="docutils literal"><span class="pre">handle_error</span></code> several times throughout this
+chapter, including several cases where the status code <code class="docutils literal"><span class="pre">404</span></code> isn't
+appropriate. As you read on, try to think of how you would extend
+this program so that the status response code can be supplied easily
+in each case.<a class="reference external" href="#fnref1">↩</a></p>
+</li>
+<li><div class="first"><div id="fn2"></div></div><p>Our code also uses the <code class="docutils literal"><span class="pre">popen2</span></code> library function, which has been
+deprecated in favor of the <code class="docutils literal"><span class="pre">subprocess</span></code> module. However, <code class="docutils literal"><span class="pre">popen2</span></code>
+was the less distracting tool to use in this
+example.<a class="reference external" href="#fnref2">↩</a></p>
+</li>
+</ol>
+</div></div></div></div></div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Learn-Computer-and-Math-again</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="blockcode-a-visual-programming-toolkit.html">500 Lines or Less | Blockcode: A visual programming toolkit</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>快速搜索</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="转向" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, timger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/chapters/a-simple-web-server.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

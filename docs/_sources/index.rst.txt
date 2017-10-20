@@ -11,6 +11,8 @@ Welcome to Learn-Computer-and-Math-again's documentation!
    :caption: Contents:
 
 
+   chapters/blockcode-a-visual-programming-toolkit.rst
+
 
 Indices and tables
 ==================
